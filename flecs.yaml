@@ -1,0 +1,5 @@
+cluster_name: foo
+
+environments:
+  foo:
+    cluster_name: bar
