@@ -12,7 +12,7 @@ pipeline:
       name: sleep for a bit
       command: sleep 10
       task_definition: some-other-task:10
-  - exec:
+  - script:
       name: some random script
       script: /tmp/bash.sh
   - service:

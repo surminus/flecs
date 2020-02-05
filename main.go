@@ -9,9 +9,6 @@ var (
 	cmdFlagEnvironment string
 )
 
-// Task runs a one-off task in the cluster
-type Task struct{}
-
 // Script runs an arbitary command
 type Script struct{}
 
@@ -48,7 +45,6 @@ var cmd = &cobra.Command{
 		for i, step := range config.Pipeline {
 			Log.Info(i)
 			Log.Info("Step: ", step.Name)
-			Log.Info("Class: ", step.Class)
 		}
 
 		Log.Info("Finished pipeline")

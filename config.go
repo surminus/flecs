@@ -15,8 +15,10 @@ type Config struct {
 
 // Step describes a step in the pipeline
 type Step struct {
-	Name  string
-	Class string
+	Name    string
+	Script  Script
+	Service Service
+	Task    Task
 }
 
 // LoadConfig will load all configuration options if they exist, allowing
@@ -51,10 +53,26 @@ func LoadConfig() (config Config, err error) {
 
 			name := details["name"].(string)
 
-			steps = append(steps, Step{
-				Name:  name,
-				Class: class,
-			})
+			s := Step{Name: name}
+
+			switch class {
+			case "task":
+				command := findString(details, "command")
+				taskDefinition := findString(details, "task_definition")
+
+				s.Task = Task{
+					Command:        command,
+					TaskDefinition: taskDefinition,
+				}
+			case "service":
+				s.Service = Service{}
+			case "script":
+				s.Script = Script{}
+			default:
+				Abort("Configuration validation failed! Pipeline entry \"" + class + "\" not recognised!")
+			}
+
+			steps = append(steps, s)
 		}
 	}
 
@@ -65,6 +83,15 @@ func LoadConfig() (config Config, err error) {
 	}
 
 	return config, err
+}
+
+func findString(values map[interface{}]interface{}, keyword string) (output string) {
+	if values[keyword] != nil {
+		return values[keyword].(string)
+
+	}
+
+	return output
 }
 
 // envConfigOption resolves the name of the config option in the environment
