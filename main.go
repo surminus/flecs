@@ -1,10 +1,8 @@
 package main
 
 import (
-	"os"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -116,9 +114,6 @@ func execute() {
 	}
 }
 
-// Log allows us to output in a consistent way everywhere
-var Log = logrus.New()
-
 // cmd is the base command
 var cmd = &cobra.Command{
 	Use: "flecs",
@@ -137,18 +132,4 @@ var cmd = &cobra.Command{
 
 		Log.Info("Finished pipeline")
 	},
-}
-
-// CheckError will display any errors and quit if found
-func CheckError(err error) {
-	if err != nil {
-		Log.Error(err)
-		os.Exit(1)
-	}
-}
-
-// Abort will log the message and quit
-func Abort(message string) {
-	Log.Error(message)
-	os.Exit(1)
 }
