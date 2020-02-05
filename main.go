@@ -80,8 +80,6 @@ func loadConfig() (config Config, err error) {
 		Pipeline:    steps,
 	}
 
-	Log.Info(steps)
-
 	return config, err
 }
 
@@ -125,13 +123,19 @@ var Log = logrus.New()
 var cmd = &cobra.Command{
 	Use: "flecs",
 	Run: func(cmd *cobra.Command, args []string) {
-		Log.Info("This is Flecs!")
+		Log.Info("Starting pipeline")
 
 		// Each other function should accept the config type
 		config, err := loadConfig()
 		CheckError(err)
 
-		Log.Info(config)
+		for i, step := range config.Pipeline {
+			Log.Info(i)
+			Log.Info("Step: ", step.Name)
+			Log.Info("Class: ", step.Class)
+		}
+
+		Log.Info("Finished pipeline")
 	},
 }
 
