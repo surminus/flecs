@@ -17,6 +17,12 @@ var (
 type Config struct {
 	Environment string
 	ClusterName string
+	Pipeline    []Task
+}
+
+// Task describes a task in a pipeline
+type Task struct {
+	Command []string
 }
 
 // loadConfig will load all configuration options if they exist, allowing
@@ -27,18 +33,45 @@ func loadConfig() (config Config) {
 	}
 
 	clusterName := viper.GetString("cluster_name")
+	pipeline := viper.GetStringSlice("pipeline")
 
-	envConfig := strings.Join([]string{"environments", cmdFlagEnvironment}, ".")
+	envConfig := envConfigOption("")
 
 	if viper.IsSet(envConfig) {
-		clusterName = viper.GetString(strings.Join([]string{envConfig, "cluster_name"}, "."))
+		clusterName = viper.GetString(envConfigOption("cluster_name"))
+		pipeline = viper.GetStringSlice(envConfigOption("pipeline"))
+	}
+
+	tasks := []Task{}
+
+	for _, task := range pipeline {
+		command := strings.Split(task, " ")
+		tasks = append(tasks, Task{Command: command})
 	}
 
 	config = Config{
 		ClusterName: clusterName,
+		Environment: cmdFlagEnvironment,
+		Pipeline:    tasks,
 	}
 
 	return config
+}
+
+// envConfigOption resolves the name of the config option in the environment
+// specific part of the configuration file, using the concept viper uses for
+// searching for subkeys, ie "foo.bar.option".
+//
+// If argument is passed as an empty string, then it returns the plain name of
+// the environment subkey, ie environments.[environment]
+func envConfigOption(option string) (result string) {
+	envConfig := strings.Join([]string{"environments", cmdFlagEnvironment}, ".")
+	if option == "" {
+		return envConfig
+	}
+
+	result = strings.Join([]string{envConfig, option}, ".")
+	return result
 }
 
 func main() {
