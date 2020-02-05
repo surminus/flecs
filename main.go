@@ -17,45 +17,72 @@ var (
 type Config struct {
 	Environment string
 	ClusterName string
-	Pipeline    []Task
+	Pipeline    []Step
 }
 
-// Task describes a task in a pipeline
-type Task struct {
-	Command []string
+// Step describes a step in the pipeline
+type Step struct {
+	Name  string
+	Class string
 }
+
+// Task runs a one-off task in the cluster
+type Task struct{}
+
+// Script runs an arbitary command
+type Script struct{}
+
+// Service will update one or many services and wait for completion
+type Service struct{}
 
 // loadConfig will load all configuration options if they exist, allowing
 // environment specific options to override top level options
-func loadConfig() (config Config) {
-	if cmdFlagEnvironment == "" {
-		Abort("--environment or -e flag is a required value")
-	}
-
+func loadConfig() (config Config, err error) {
 	clusterName := viper.GetString("cluster_name")
-	pipeline := viper.GetStringSlice("pipeline")
+	pipeline := viper.Get("pipeline").([]interface{})
 
-	envConfig := envConfigOption("")
-
-	if viper.IsSet(envConfig) {
-		clusterName = viper.GetString(envConfigOption("cluster_name"))
-		pipeline = viper.GetStringSlice(envConfigOption("pipeline"))
+	envConfig := ""
+	if cmdFlagEnvironment != "" {
+		envConfig = envConfigOption("")
 	}
 
-	tasks := []Task{}
+	if envConfig != "" {
+		if viper.IsSet(envConfig) {
+			if viper.IsSet(envConfigOption("cluster_name")) {
+				clusterName = viper.GetString(envConfigOption("cluster_name"))
+			}
 
-	for _, task := range pipeline {
-		command := strings.Split(task, " ")
-		tasks = append(tasks, Task{Command: command})
+			if viper.IsSet(envConfigOption("pipeline")) {
+				pipeline = viper.Get(envConfigOption("pipeline")).([]interface{})
+			}
+		}
+	}
+
+	steps := []Step{}
+
+	for _, step := range pipeline {
+		for key, value := range step.(map[interface{}]interface{}) {
+			class := key.(string)
+			details := value.(map[interface{}]interface{})
+
+			name := details["name"].(string)
+
+			steps = append(steps, Step{
+				Name:  name,
+				Class: class,
+			})
+		}
 	}
 
 	config = Config{
 		ClusterName: clusterName,
 		Environment: cmdFlagEnvironment,
-		Pipeline:    tasks,
+		Pipeline:    steps,
 	}
 
-	return config
+	Log.Info(steps)
+
+	return config, err
 }
 
 // envConfigOption resolves the name of the config option in the environment
@@ -101,7 +128,8 @@ var cmd = &cobra.Command{
 		Log.Info("This is Flecs!")
 
 		// Each other function should accept the config type
-		config := loadConfig()
+		config, err := loadConfig()
+		CheckError(err)
 
 		Log.Info(config)
 	},

@@ -5,5 +5,20 @@ environments:
     cluster_name: bar
 
 pipeline:
-  - foo
-  - bar
+  - task:
+      name: show uptime
+      command: uptime
+  - task:
+      name: sleep for a bit
+      command: sleep 10
+      task_definition: some-other-task:10
+  - exec:
+      name: some random script
+      script: /tmp/bash.sh
+  - service:
+      name: update all services
+      type: update
+      parallel: true
+      services:
+        - service1
+        - service2
