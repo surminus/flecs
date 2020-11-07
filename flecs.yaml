@@ -8,27 +8,24 @@ pipeline:
   - task:
       name: show uptime
       command: uptime
-  - task:
-      name: sleep for a bit
-      command: sleep 10
-      task_definition: some-other-task:10
+      definition: some-task
   - script:
       name: some random script
-      script: /tmp/bash.sh
+      path: /tmp/bash.sh
   - service:
       name: update all services
       type: update
-      parallel: true
-      services:
-        - service1
-        - service2
+      definition: web
 
 definitions:
   web:
-    family: web
     task_role_name:
     execution_role_name:
     network_mode: awsvpc
     containers:
       - name: rails
         image: some/image
+  some-task:
+    containers:
+      - name: foo
+        image: alpine
