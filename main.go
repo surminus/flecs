@@ -27,27 +27,15 @@ func execute() {
 var cmd = &cobra.Command{
 	Use: "flecs",
 	Run: func(cmd *cobra.Command, args []string) {
-		Log.Info("Starting pipeline")
+		Log.Info("START")
 
 		// Each other function should accept the config type
 		config, err := LoadConfig()
 		CheckError(err)
 
-		for _, step := range config.Pipeline {
-			Log.Info("Step: ", step.Type)
+		err = config.Run()
+		CheckError(err)
 
-			switch step.Type {
-			case "task":
-				Log.Info("Name: ", step.Task.Name)
-			case "service":
-				Log.Info("Name: ", step.Service.Name)
-			case "script":
-				Log.Info("Name: ", step.Script.Name)
-			default:
-				Log.Fatal("Invalid configuration")
-			}
-		}
-
-		Log.Info("Finished pipeline")
+		Log.Info("END")
 	},
 }
