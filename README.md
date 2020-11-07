@@ -1,11 +1,11 @@
 # Flecs
 
-FutureLearn ECS deployment tool
+Flexible ECS Deployment!
 
 ## Goal of the project
-
-Convert the [deployment](https://github.com/futurelearn/deployment/) repo to a standalone tool written in Go that:
 
 - takes pipeline configuration in YAML
 - accepts running custom tasks
 - allows apps to store their own configuration
+- manages creation of ECS service (but not the cluster)
+- sensible defaults for task definitions
