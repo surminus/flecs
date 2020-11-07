@@ -5,10 +5,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	cmdFlagEnvironment string
-)
-
 // Script runs an arbitary command
 type Script struct{}
 
@@ -20,7 +16,8 @@ func main() {
 }
 
 func execute() {
-	cmd.PersistentFlags().StringVarP(&cmdFlagEnvironment, "environment", "e", "", "An environment (or stage) to deploy to")
+	cmd.PersistentFlags().StringP("environment", "e", "", "An environment (or stage) to deploy to")
+	viper.BindPFlag("environment", cmd.PersistentFlags().Lookup("environment"))
 
 	viper.SetConfigName("flecs")
 	viper.AddConfigPath(".")

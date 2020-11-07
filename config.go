@@ -28,7 +28,7 @@ func LoadConfig() (config Config, err error) {
 	pipeline := viper.Get("pipeline").([]interface{})
 
 	envConfig := ""
-	if cmdFlagEnvironment != "" {
+	if viper.GetString("environment") != "" {
 		envConfig = envConfigOption("")
 	}
 
@@ -78,7 +78,7 @@ func LoadConfig() (config Config, err error) {
 
 	config = Config{
 		ClusterName: clusterName,
-		Environment: cmdFlagEnvironment,
+		Environment: viper.GetString("environment"),
 		Pipeline:    steps,
 	}
 
@@ -101,7 +101,7 @@ func findString(values map[interface{}]interface{}, keyword string) (output stri
 // If argument is passed as an empty string, then it returns the plain name of
 // the environment subkey, ie environments.[environment]
 func envConfigOption(option string) (result string) {
-	envConfig := strings.Join([]string{"environments", cmdFlagEnvironment}, ".")
+	envConfig := strings.Join([]string{"environments", viper.GetString("environment")}, ".")
 	if option == "" {
 		return envConfig
 	}
