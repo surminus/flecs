@@ -11,6 +11,10 @@ func (config Config) Run() (err error) {
 			Log.Info("Name: ", step.Service.Name)
 		case "script":
 			Log.Info("Name: ", step.Script.Name)
+			_, err = step.Script.Run()
+			if err != nil {
+				return err
+			}
 		default:
 			Log.Fatal("Invalid configuration")
 		}

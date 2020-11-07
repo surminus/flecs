@@ -10,8 +10,11 @@ pipeline:
       command: uptime
       definition: some-task
   - script:
-      name: run whatever script you want
-      path: /tmp/bash.sh
+      name: list files
+      inline: ls
+  - script:
+      name: run foo.sh
+      path: foo.sh
   - service:
       name: deploy web service
       type: update
