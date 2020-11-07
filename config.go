@@ -1,111 +1,117 @@
 package main
 
 import (
-	"strings"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
+
+// Environment is environment specific configuration
+type Environment struct {
+	ClusterName string `yaml:"cluster_name"`
+	Pipeline    []Step `yaml:"pipeline"`
+}
 
 // Config represents all options that can be configured by a flecs config file
 type Config struct {
-	Environment string
-	ClusterName string
-	Pipeline    []Step
+	ClusterName  string                 `yaml:"cluster_name"`
+	Definitions  []Definition           `yaml:"definitions"`
+	Environments map[string]Environment `yaml:"environments"`
+	Pipeline     []Step                 `yaml:"pipeline"`
 }
+
+// Definition will be used to configure task definitions
+type Definition struct{}
 
 // Step describes a step in the pipeline
 type Step struct {
-	Name    string
-	Script  Script
-	Service Service
-	Task    Task
+	Script  Script  `yaml:"script"`
+	Service Service `yaml:"service"`
+	Task    Task    `yaml:"task"`
+	Type    string
 }
 
 // LoadConfig will load all configuration options if they exist, allowing
 // environment specific options to override top level options
 func LoadConfig() (config Config, err error) {
-	clusterName := viper.GetString("cluster_name")
-	pipeline := viper.Get("pipeline").([]interface{})
-
-	envConfig := ""
-	if viper.GetString("environment") != "" {
-		envConfig = envConfigOption("")
+	configPath := viper.GetViper().ConfigFileUsed()
+	file, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return config, err
 	}
 
-	if envConfig != "" {
-		if viper.IsSet(envConfig) {
-			if viper.IsSet(envConfigOption("cluster_name")) {
-				clusterName = viper.GetString(envConfigOption("cluster_name"))
-			}
+	yaml.Unmarshal(file, &config)
 
-			if viper.IsSet(envConfigOption("pipeline")) {
-				pipeline = viper.Get(envConfigOption("pipeline")).([]interface{})
-			}
+	// Configure default options
+	if viper.IsSet("environment") {
+		config.ClusterName = config.Environments[viper.GetString("environment")].ClusterName
+	}
+
+	envConfig, err := config.getEnvConfig()
+	if err != nil {
+		return config, err
+	}
+
+	// Set ClusterName
+	if config.ClusterName == "" && envConfig.ClusterName == "" {
+		config.ClusterName = "default"
+	}
+
+	if envConfig.ClusterName != "" {
+		config.ClusterName = envConfig.ClusterName
+	}
+
+	// Check and set Pipeline
+	if len(config.Pipeline) < 1 && len(envConfig.Pipeline) < 1 {
+		return config, fmt.Errorf("pipeline configuration not found")
+	}
+
+	if len(envConfig.Pipeline) > 0 {
+		config.Pipeline = envConfig.Pipeline
+	}
+
+	// Check Pipeline for syntax errors
+	for index, step := range config.Pipeline {
+		serviceSet := step.Service != (Service{})
+		taskSet := step.Task != (Task{})
+		scriptSet := step.Script != (Script{})
+
+		if !serviceSet && !taskSet && !scriptSet {
+			return config, fmt.Errorf("invalid step config on step %d", index)
 		}
-	}
 
-	steps := []Step{}
-
-	for _, step := range pipeline {
-		for key, value := range step.(map[interface{}]interface{}) {
-			class := key.(string)
-			details := value.(map[interface{}]interface{})
-
-			name := details["name"].(string)
-
-			s := Step{Name: name}
-
-			switch class {
-			case "task":
-				command := findString(details, "command")
-				taskDefinition := findString(details, "task_definition")
-
-				s.Task = Task{
-					Command:        command,
-					TaskDefinition: taskDefinition,
-				}
-			case "service":
-				s.Service = Service{}
-			case "script":
-				s.Script = Script{}
-			default:
-				Abort("Configuration validation failed! Pipeline entry \"" + class + "\" not recognised!")
-			}
-
-			steps = append(steps, s)
+		if serviceSet && taskSet || taskSet && scriptSet || serviceSet && scriptSet {
+			return config, fmt.Errorf("must configure only one of: service, task, script")
 		}
-	}
 
-	config = Config{
-		ClusterName: clusterName,
-		Environment: viper.GetString("environment"),
-		Pipeline:    steps,
+		// Here we set as a string what kind of step it is
+		if serviceSet && !taskSet && !scriptSet {
+			config.Pipeline[index].Type = "service"
+		}
+
+		if taskSet && !scriptSet && !serviceSet {
+			config.Pipeline[index].Type = "task"
+		}
+
+		if scriptSet && !serviceSet && !taskSet {
+			config.Pipeline[index].Type = "script"
+		}
 	}
 
 	return config, err
 }
 
-func findString(values map[interface{}]interface{}, keyword string) (output string) {
-	if values[keyword] != nil {
-		return values[keyword].(string)
+func (c Config) getEnvConfig() (env Environment, err error) {
+	if viper.GetString("environment") != "" {
+		e := viper.GetString("environment")
 
+		env, ok := c.Environments[e]
+		if !ok {
+			return env, fmt.Errorf("Cannot find environment config for %s", e)
+		}
 	}
 
-	return output
-}
-
-// envConfigOption resolves the name of the config option in the environment
-// specific part of the configuration file, using the concept viper uses for
-// searching for subkeys, ie "foo.bar.option".
-//
-// If argument is passed as an empty string, then it returns the plain name of
-// the environment subkey, ie environments.[environment]
-func envConfigOption(option string) (result string) {
-	envConfig := strings.Join([]string{"environments", viper.GetString("environment")}, ".")
-	if option == "" {
-		return envConfig
-	}
-
-	result = strings.Join([]string{envConfig, option}, ".")
-	return result
+	return env, err
 }

@@ -1,7 +1,7 @@
 cluster_name: foo
 
 environments:
-  foo:
+  test:
     cluster_name: bar
 
 pipeline:
@@ -10,10 +10,10 @@ pipeline:
       command: uptime
       definition: some-task
   - script:
-      name: some random script
+      name: run whatever script you want
       path: /tmp/bash.sh
   - service:
-      name: update all services
+      name: deploy web service
       type: update
       definition: web
 

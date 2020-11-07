@@ -5,12 +5,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Script runs an arbitary command
-type Script struct{}
-
-// Service will update one or many services and wait for completion
-type Service struct{}
-
 func main() {
 	execute()
 }
@@ -39,9 +33,19 @@ var cmd = &cobra.Command{
 		config, err := LoadConfig()
 		CheckError(err)
 
-		for i, step := range config.Pipeline {
-			Log.Info(i)
-			Log.Info("Step: ", step.Name)
+		for _, step := range config.Pipeline {
+			Log.Info("Step: ", step.Type)
+
+			switch step.Type {
+			case "task":
+				Log.Info("Name: ", step.Task.Name)
+			case "service":
+				Log.Info("Name: ", step.Service.Name)
+			case "script":
+				Log.Info("Name: ", step.Script.Name)
+			default:
+				Log.Fatal("Invalid configuration")
+			}
 		}
 
 		Log.Info("Finished pipeline")
