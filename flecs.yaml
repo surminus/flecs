@@ -22,3 +22,13 @@ pipeline:
       services:
         - service1
         - service2
+
+definitions:
+  web:
+    family: web
+    task_role_name:
+    execution_role_name:
+    network_mode: awsvpc
+    containers:
+      - name: rails
+        image: some/image
