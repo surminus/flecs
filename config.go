@@ -13,24 +13,28 @@ import (
 
 // Environment is environment specific configuration
 type Environment struct {
-	ClusterName        string   `yaml:"cluster_name"`
-	Pipeline           []Step   `yaml:"pipeline"`
-	Region             string   `yaml:"region"`
-	SecurityGroupNames []string `yaml:"security_group_names"`
-	SubnetNames        []string `yaml:"subnet_names"`
+	ClusterName          string            `yaml:"cluster_name"`
+	EnvironmentVariables map[string]string `yaml:"environment_variables"`
+	Pipeline             []Step            `yaml:"pipeline"`
+	Region               string            `yaml:"region"`
+	Secrets              []string          `yaml:"secrets"`
+	SecurityGroupNames   []string          `yaml:"security_group_names"`
+	SubnetNames          []string          `yaml:"subnet_names"`
 }
 
 // Config represents all options that can be configured by a flecs config file
 type Config struct {
-	ClusterName        string                 `yaml:"cluster_name"`
-	Definitions        map[string]Definition  `yaml:"definitions"`
-	Environments       map[string]Environment `yaml:"environments"`
-	Pipeline           []Step                 `yaml:"pipeline"`
-	ProjectName        string                 `yaml:"project_name"`
-	Region             string                 `yaml:"region"`
-	Services           map[string]Service     `yaml:"services"`
-	SecurityGroupNames []string               `yaml:"security_group_names"`
-	SubnetNames        []string               `yaml:"subnet_names"`
+	ClusterName          string                 `yaml:"cluster_name"`
+	Definitions          map[string]Definition  `yaml:"definitions"`
+	EnvironmentVariables map[string]string      `yaml:"environment_variables"`
+	Environments         map[string]Environment `yaml:"environments"`
+	Pipeline             []Step                 `yaml:"pipeline"`
+	ProjectName          string                 `yaml:"project_name"`
+	Region               string                 `yaml:"region"`
+	Secrets              []string               `yaml:"secrets"`
+	SecurityGroupNames   []string               `yaml:"security_group_names"`
+	Services             map[string]Service     `yaml:"services"`
+	SubnetNames          []string               `yaml:"subnet_names"`
 
 	EnvironmentName string
 	Tag             string
@@ -123,6 +127,43 @@ func LoadConfig() (config Config, err error) {
 	if len(envConfig.SubnetNames) > 0 {
 		config.SubnetNames = envConfig.SubnetNames
 	}
+
+	// Merge environment variables
+	if len(envConfig.EnvironmentVariables) > 0 {
+		for key, value := range envConfig.EnvironmentVariables {
+			config.EnvironmentVariables[key] = value
+		}
+	}
+
+	// Merge secrets
+	var mergedSecrets []string
+	if len(envConfig.Secrets) > 0 && len(config.Secrets) == 0 {
+		mergedSecrets = envConfig.Secrets
+	}
+
+	if len(config.Secrets) > 0 && len(envConfig.Secrets) == 0 {
+		mergedSecrets = config.Secrets
+	}
+
+	if len(config.Secrets) > 0 && len(envConfig.Secrets) > 1 {
+		// Turn the secrets into a map so it's easier to merge
+		mappedSecrets := make(map[string]string)
+		for _, secret := range config.Secrets {
+			mappedSecrets[secret] = ""
+		}
+
+		// Replace any global secrets with environment specific ones
+		for _, secret := range envConfig.Secrets {
+			mappedSecrets[secret] = ""
+		}
+
+		// Convert back to slice
+		for key, _ := range mappedSecrets {
+			mergedSecrets = append(mergedSecrets, key)
+		}
+	}
+
+	config.Secrets = mergedSecrets
 
 	// Check and set Pipeline
 	if len(config.Pipeline) < 1 && len(envConfig.Pipeline) < 1 {

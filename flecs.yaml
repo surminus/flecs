@@ -10,6 +10,10 @@ environments:
       - subnet_c
     security_group_names:
       - some_security_group
+    environment_variables:
+      FOO: bar
+    secrets:
+      - FOO
 
 pipeline:
   - task:
