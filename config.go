@@ -18,7 +18,7 @@ type Environment struct {
 	LogGroupName         string            `yaml:"log_group_name"`
 	Pipeline             []Step            `yaml:"pipeline"`
 	Region               string            `yaml:"region"`
-	Secrets              []string          `yaml:"secrets"`
+	Secrets              map[string]string `yaml:"secrets"`
 	SecurityGroupNames   []string          `yaml:"security_group_names"`
 	SubnetNames          []string          `yaml:"subnet_names"`
 }
@@ -33,7 +33,7 @@ type Config struct {
 	Pipeline             []Step                 `yaml:"pipeline"`
 	ProjectName          string                 `yaml:"project_name"`
 	Region               string                 `yaml:"region"`
-	Secrets              []string               `yaml:"secrets"`
+	Secrets              map[string]string      `yaml:"secrets"`
 	SecurityGroupNames   []string               `yaml:"security_group_names"`
 	Services             map[string]Service     `yaml:"services"`
 	SubnetNames          []string               `yaml:"subnet_names"`
@@ -138,34 +138,11 @@ func LoadConfig() (config Config, err error) {
 	}
 
 	// Merge secrets
-	var mergedSecrets []string
-	if len(envConfig.Secrets) > 0 && len(config.Secrets) == 0 {
-		mergedSecrets = envConfig.Secrets
-	}
-
-	if len(config.Secrets) > 0 && len(envConfig.Secrets) == 0 {
-		mergedSecrets = config.Secrets
-	}
-
-	if len(config.Secrets) > 0 && len(envConfig.Secrets) > 1 {
-		// Turn the secrets into a map so it's easier to merge
-		mappedSecrets := make(map[string]string)
-		for _, secret := range config.Secrets {
-			mappedSecrets[secret] = ""
-		}
-
-		// Replace any global secrets with environment specific ones
-		for _, secret := range envConfig.Secrets {
-			mappedSecrets[secret] = ""
-		}
-
-		// Convert back to slice
-		for key, _ := range mappedSecrets {
-			mergedSecrets = append(mergedSecrets, key)
+	if len(envConfig.Secrets) > 0 {
+		for key, value := range envConfig.Secrets {
+			config.Secrets[key] = value
 		}
 	}
-
-	config.Secrets = mergedSecrets
 
 	// Check and set LogGroupName
 	if config.LogGroupName == "" && envConfig.LogGroupName != "" {
