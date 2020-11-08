@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
@@ -18,14 +20,13 @@ type Environment struct {
 // Config represents all options that can be configured by a flecs config file
 type Config struct {
 	ClusterName  string                 `yaml:"cluster_name"`
-	Definitions  []Definition           `yaml:"definitions"`
+	Definitions  map[string]Definition  `yaml:"definitions"`
 	Environments map[string]Environment `yaml:"environments"`
 	Pipeline     []Step                 `yaml:"pipeline"`
+	ProjectName  string                 `yaml:"project_name"`
 	Region       string                 `yaml:"region"`
+	Services     map[string]Service     `yaml:"services"`
 }
-
-// Definition will be used to configure task definitions
-type Definition struct{}
 
 // Step describes a step in the pipeline
 type Step struct {
@@ -54,6 +55,16 @@ func LoadConfig() (config Config, err error) {
 	envConfig, err := config.getEnvConfig()
 	if err != nil {
 		return config, err
+	}
+
+	// Set default project name
+	if config.ProjectName == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return config, err
+		}
+
+		config.ProjectName = path.Base(wd)
 	}
 
 	// Set ClusterName

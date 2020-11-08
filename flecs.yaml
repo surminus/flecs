@@ -4,6 +4,12 @@ region: eu-west-2
 environments:
   test:
     cluster_name: bar
+    subnet_names:
+      - subnet_a
+      - subnet_b
+      - subnet_c
+    security_group_names:
+      - some_security_group
 
 pipeline:
   - task:
@@ -23,13 +29,17 @@ pipeline:
 services:
   web:
     definition: web
-    target_group_arn: something
+    launch_type: EC2
+    load_balancer:
+      target_group_arn: something
+      container_name: nginx
+      container_port: 80
 
 definitions:
   web:
     task_role_name:
     execution_role_name:
-    network_mode: awsvpc
+    volume_name: errors
     containers:
       - name: rails
         image: some/image
