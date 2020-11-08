@@ -124,6 +124,11 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 		}
 	}
 
+	// Volumes
+	volumes := []*ecs.Volume{
+		&ecs.Volume{Name: aws.String(d.VolumeName)},
+	}
+
 	cpu := strconv.Itoa(d.CPU)
 	memory := strconv.Itoa(d.Memory)
 
@@ -136,9 +141,10 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 		NetworkMode:          aws.String("awsvpc"),
 		PlacementConstraints: placementConstraints,
 		TaskRoleArn:          aws.String(taskRoleArn),
-		Volumes: []*ecs.Volume{
-			&ecs.Volume{Name: aws.String(d.VolumeName)},
-		},
+	}
+
+	if d.VolumeName != "" {
+		registerTaskDefinitionInput.SetVolumes(volumes)
 	}
 
 	output, err := client.RegisterTaskDefinition(&registerTaskDefinitionInput)
@@ -293,7 +299,7 @@ func (d Definition) createDefaultExecutionRole(c Client) (roleArn string, err er
 	}
 
 	_, err = clientIAM.Client.AttachRolePolicy(&iam.AttachRolePolicyInput{
-		PolicyArn: aws.String("roleArn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"),
+		PolicyArn: aws.String("aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"),
 		RoleName:  createRoleOutput.Role.RoleName,
 	})
 	if err != nil {
