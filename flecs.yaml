@@ -13,7 +13,7 @@ environments:
     environment_variables:
       FOO: bar
     secrets:
-      - FOO
+      FOO: /path/to/parameter/FOO
 
 pipeline:
   - task:
@@ -47,6 +47,11 @@ definitions:
     containers:
       - name: rails
         image: some/image
+    healthcheck:
+      command:
+    placement_constraints:
+      - expression: foo
+        type: bar
   some-task:
     containers:
       - name: foo

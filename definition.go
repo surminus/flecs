@@ -14,24 +14,48 @@ import (
 
 // Definition will be used to configure task definitions
 type Definition struct {
-	ExecutionRoleName    string                `yaml:"execution_role_name"`
-	Tag                  string                `yaml:"tag"`
-	TaskRoleName         string                `yaml:"task_role_name"`
-	VolumeName           string                `yaml:"volume_name"`
-	Containers           []Container           `yaml:"containers"`
-	CPU                  int                   `yaml:"cpu"`
-	Memory               int                   `yaml:"memory"`
-	PlacementConstraints []PlacementConstraint `yaml:"placement_constraints"`
+	ExecutionRoleName    string              `yaml:"execution_role_name"`
+	Tag                  string              `yaml:"tag"`
+	TaskRoleName         string              `yaml:"task_role_name"`
+	VolumeName           string              `yaml:"volume_name"`
+	Containers           []Container         `yaml:"containers"`
+	CPU                  int                 `yaml:"cpu"`
+	Memory               int                 `yaml:"memory"`
+	PlacementConstraints []map[string]string `yaml:"placement_constraints"`
 }
 
 // Container sets up a container definition
 type Container struct {
-	Image string `yaml:"image"`
-	Name  string `yaml:"name"`
+	Command     string       `yaml:"command"`
+	Essential   bool         `yaml:"essential"`
+	HealthCheck HealthCheck  `yaml:"healthcheck"`
+	Image       string       `yaml:"image"`
+	MountPoints []MountPoint `yaml:"mount_points"`
+	Name        string       `yaml:"name"`
+	VolumesFrom []VolumeFrom `yaml:"volumes_from"`
 }
 
-// PlacementConstraint sets up a placement constraint
-type PlacementConstraint struct{}
+// HealthCheck is used to check the health of a container
+type HealthCheck struct {
+	Command     string `yaml:"command"`
+	Interval    int64  `yaml:"interval"`
+	Retries     int64  `yaml:"retries"`
+	StartPeriod int64  `yaml:"start_period"`
+	Timeout     int64  `yaml:"timeout"`
+}
+
+// MountPoint allows setting up a mount point on a container
+type MountPoint struct {
+	ContainerPath string `yaml:"container_path"`
+	ReadOnly      bool   `yaml:"read_only"`
+	SourceVolume  string `yaml:"source_volume"`
+}
+
+// VolumeFrom allows sharing a volume with another container
+type VolumeFrom struct {
+	ReadOnly        bool   `yaml:"read_only"`
+	SourceContainer string `yaml:"source_container"`
+}
 
 // Create registers a new task definition, and creates an execution role if one is not
 // supplied
@@ -83,18 +107,33 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 	}
 
 	// Configure container definitions
+	containerDefinitions, err := d.generateContainerDefinitions(cfg, name)
+	if err != nil {
+		return arn, err
+	}
+
+	// Placement constraints
+	var placementConstraints []*ecs.TaskDefinitionPlacementConstraint
+	for _, constraint := range d.PlacementConstraints {
+		for key, value := range constraint {
+			placementConstraints = append(placementConstraints, &ecs.TaskDefinitionPlacementConstraint{
+				Expression: aws.String(key),
+				Type:       aws.String(value),
+			})
+		}
+	}
 
 	cpu := strconv.Itoa(d.CPU)
 	memory := strconv.Itoa(d.Memory)
 
 	registerTaskDefinitionInput := ecs.RegisterTaskDefinitionInput{
-		ContainerDefinitions: []*ecs.ContainerDefinition{},
+		ContainerDefinitions: containerDefinitions,
 		Cpu:                  aws.String(cpu),
 		Memory:               aws.String(memory),
 		ExecutionRoleArn:     aws.String(executionRoleArn),
 		Family:               aws.String(family),
 		NetworkMode:          aws.String("awsvpc"),
-		PlacementConstraints: []*ecs.TaskDefinitionPlacementConstraint{},
+		PlacementConstraints: placementConstraints,
 		TaskRoleArn:          aws.String(taskRoleArn),
 		Volumes: []*ecs.Volume{
 			&ecs.Volume{Name: aws.String(d.VolumeName)},
@@ -109,6 +148,89 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 	arn = aws.StringValue(output.TaskDefinition.TaskDefinitionArn)
 
 	return arn, err
+}
+
+func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix string) (def []*ecs.ContainerDefinition, err error) {
+	// Secrets
+	var secrets []*ecs.Secret
+	for name, valueFrom := range cfg.Secrets {
+		secrets = append(secrets, &ecs.Secret{
+			Name:      aws.String(name),
+			ValueFrom: aws.String(valueFrom),
+		})
+	}
+
+	// Environment variables
+	var environmentVariables []*ecs.KeyValuePair
+	for name, value := range cfg.EnvironmentVariables {
+		environmentVariables = append(environmentVariables, &ecs.KeyValuePair{
+			Name:  aws.String(name),
+			Value: aws.String(value),
+		})
+	}
+
+	// Log configuration
+	logConfiguration := ecs.LogConfiguration{
+		LogDriver: aws.String("awslogs"),
+		Options: aws.StringMap(map[string]string{
+			"awslogs-region":        cfg.Region,
+			"awslogs-stream-prefix": logStreamPrefix,
+			"awslogs-group":         cfg.LogGroupName,
+		}),
+	}
+
+	for _, container := range d.Containers {
+		command := strings.Split(container.Command, " ")
+
+		healthcheck := ecs.HealthCheck{
+			Command:     aws.StringSlice(strings.Split(container.HealthCheck.Command, " ")),
+			Interval:    aws.Int64(container.HealthCheck.Interval),
+			Retries:     aws.Int64(container.HealthCheck.Retries),
+			StartPeriod: aws.Int64(container.HealthCheck.StartPeriod),
+			Timeout:     aws.Int64(container.HealthCheck.Timeout),
+		}
+
+		essential := false
+		if len(d.Containers) == 1 {
+			essential = true
+		} else {
+			essential = container.Essential
+		}
+
+		var mountPoints []*ecs.MountPoint
+		for _, mount := range container.MountPoints {
+			mountPoints = append(mountPoints, &ecs.MountPoint{
+				ContainerPath: aws.String(mount.ContainerPath),
+				ReadOnly:      aws.Bool(mount.ReadOnly),
+				SourceVolume:  aws.String(mount.SourceVolume),
+			})
+		}
+
+		var volumesFrom []*ecs.VolumeFrom
+		for _, volume := range container.VolumesFrom {
+			volumesFrom = append(volumesFrom, &ecs.VolumeFrom{
+				ReadOnly:        aws.Bool(volume.ReadOnly),
+				SourceContainer: aws.String(volume.SourceContainer),
+			})
+		}
+
+		containerDefinition := ecs.ContainerDefinition{
+			Command:          aws.StringSlice(command),
+			Environment:      environmentVariables,
+			Essential:        aws.Bool(essential),
+			Image:            aws.String(container.Image),
+			LogConfiguration: &logConfiguration,
+			Name:             aws.String(container.Name),
+			Secrets:          secrets,
+			HealthCheck:      &healthcheck,
+			MountPoints:      mountPoints,
+			VolumesFrom:      volumesFrom,
+		}
+
+		def = append(def, &containerDefinition)
+	}
+
+	return def, err
 }
 
 func (d Definition) createDefaultExecutionRole(c Client) (roleArn string, err error) {
