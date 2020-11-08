@@ -68,6 +68,16 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 	}
 
 	// Register task definition
+	definition, ok := cfg.Definitions[s.Definition]
+	if !ok {
+		return serviceName, fmt.Errorf("cannot find task definition called %s", s.Definition)
+	}
+
+	taskDefinitionArn, err := definition.Create(c, cfg, serviceNamePrefix)
+	if err != nil {
+		return serviceName, err
+	}
+	Log.Infof("Registered task definition %s", taskDefinitionArn)
 
 	// Generate new service name with uuid
 	serviceName = strings.Join([]string{serviceNamePrefix, uniuri.NewLen(8)}, "-")
@@ -84,7 +94,7 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 			},
 		},
 		ServiceName:    aws.String(serviceName),
-		TaskDefinition: aws.String(""),
+		TaskDefinition: aws.String(taskDefinitionArn),
 	}
 
 	output, err := client.CreateService(&createServiceInput)
