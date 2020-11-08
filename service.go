@@ -21,10 +21,17 @@ type ServiceStep struct {
 
 // Service contains the parameters for creating a service
 type Service struct {
-	Definition     string `yaml:"definition"`
-	LaunchType     string `yaml:"launch_type"`
-	Name           string
+	Definition   string `yaml:"definition"`
+	LaunchType   string `yaml:"launch_type"`
+	Name         string
+	LoadBalancer LoadBalancer `yaml:"load_balancer"`
+}
+
+// LoadBalancer configures a load balancer that has been created elsewhere
+type LoadBalancer struct {
 	TargetGroupArn string `yaml:"target_group_arn"`
+	ContainerName  string `yaml:"container_name"`
+	ContainerPort  int64  `yaml:"container_port"`
 }
 
 // Create creates a service if it doesn't exist, and returns the name of the
@@ -95,6 +102,18 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		},
 		ServiceName:    aws.String(serviceName),
 		TaskDefinition: aws.String(taskDefinitionArn),
+	}
+
+	if s.LoadBalancer != (LoadBalancer{}) {
+		loadBalancers := []*ecs.LoadBalancer{
+			&ecs.LoadBalancer{
+				ContainerName:  aws.String(s.LoadBalancer.ContainerName),
+				ContainerPort:  aws.Int64(s.LoadBalancer.ContainerPort),
+				TargetGroupArn: aws.String(s.LoadBalancer.TargetGroupArn),
+			},
+		}
+
+		createServiceInput.SetLoadBalancers(loadBalancers)
 	}
 
 	output, err := client.CreateService(&createServiceInput)
