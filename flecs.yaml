@@ -17,8 +17,12 @@ pipeline:
       path: foo.sh
   - service:
       name: deploy web service
-      type: update
-      definition: web
+      service: web
+
+services:
+  web:
+    definition: web
+    target_group_arn: something
 
 definitions:
   web:
