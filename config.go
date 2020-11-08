@@ -55,8 +55,14 @@ func LoadConfig() (config Config, err error) {
 	yaml.Unmarshal(file, &config)
 
 	// Configure default options
-	if viper.IsSet("environment") {
-		config.ClusterName = config.Environments[viper.GetString("environment")].ClusterName
+	if viper.GetString("environment") != "" {
+		config.EnvironmentName = viper.GetString("environment")
+
+		if _, ok := config.Environments[config.EnvironmentName]; !ok {
+			return config, fmt.Errorf("no environment configuration found")
+		}
+
+		config.ClusterName = config.Environments[config.EnvironmentName].ClusterName
 	}
 
 	envConfig, err := config.getEnvConfig()
