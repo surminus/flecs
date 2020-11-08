@@ -10,8 +10,14 @@ func main() {
 }
 
 func execute() {
+	viper.SetEnvPrefix("flecs")
+	viper.AutomaticEnv()
+
 	cmd.PersistentFlags().StringP("environment", "e", "", "An environment (or stage) to deploy to")
 	viper.BindPFlag("environment", cmd.PersistentFlags().Lookup("environment"))
+
+	cmd.PersistentFlags().StringP("tag", "t", "", "The tag is used by images")
+	viper.BindPFlag("tag", cmd.PersistentFlags().Lookup("tag"))
 
 	viper.SetConfigName("flecs")
 	viper.AddConfigPath(".")

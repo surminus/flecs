@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
@@ -31,8 +32,8 @@ type Config struct {
 	SecurityGroupNames []string               `yaml:"security_group_names"`
 	SubnetNames        []string               `yaml:"subnet_names"`
 
-	// Set automatically
 	EnvironmentName string
+	Tag             string
 }
 
 // Step describes a step in the pipeline
@@ -63,6 +64,21 @@ func LoadConfig() (config Config, err error) {
 		}
 
 		config.ClusterName = config.Environments[config.EnvironmentName].ClusterName
+	}
+
+	if config.Tag == "" {
+		r, err := git.PlainOpen(".")
+		if err != nil {
+			return config, err
+		}
+
+		ref, err := r.Head()
+		if err != nil {
+			return config, err
+		}
+
+		config.Tag = ref.Hash().String()
+		Log.Infof("Using tag %s", config.Tag)
 	}
 
 	envConfig, err := config.getEnvConfig()
