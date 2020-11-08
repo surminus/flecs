@@ -17,6 +17,8 @@ func execute() {
 	viper.AddConfigPath(".")
 	CheckError(viper.ReadInConfig())
 
+	cmd.AddCommand(deploy)
+
 	// Run the thing
 	if err := cmd.Execute(); err != nil {
 		CheckError(err)
@@ -26,6 +28,11 @@ func execute() {
 // cmd is the base command
 var cmd = &cobra.Command{
 	Use: "flecs",
+}
+
+// deploy is used for running through the pipeline from start to finish
+var deploy = &cobra.Command{
+	Use: "deploy",
 	Run: func(cmd *cobra.Command, args []string) {
 		Log.Info("START")
 
