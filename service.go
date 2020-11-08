@@ -19,6 +19,7 @@ type ServiceStep struct {
 	Service     string `yaml:"service"`
 }
 
+// Service contains the parameters for creating a service
 type Service struct {
 	Definition     string `yaml:"definition"`
 	LaunchType     string `yaml:"launch_type"`
@@ -26,6 +27,8 @@ type Service struct {
 	TargetGroupArn string `yaml:"target_group_arn"`
 }
 
+// Create creates a service if it doesn't exist, and returns the name of the
+// service
 func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 	// Set up ECS client
 	clientECS, err := c.ECS()
@@ -98,6 +101,7 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 	return serviceName, err
 }
 
+// Update updates a service that already exists
 func (s Service) Update() (serviceName string, err error) {
 	return serviceName, err
 }
