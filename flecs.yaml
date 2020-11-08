@@ -1,4 +1,5 @@
 cluster_name: foo
+region: eu-west-2
 
 environments:
   test:

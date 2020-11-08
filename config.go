@@ -12,6 +12,7 @@ import (
 type Environment struct {
 	ClusterName string `yaml:"cluster_name"`
 	Pipeline    []Step `yaml:"pipeline"`
+	Region      string `yaml:"region"`
 }
 
 // Config represents all options that can be configured by a flecs config file
@@ -20,6 +21,7 @@ type Config struct {
 	Definitions  []Definition           `yaml:"definitions"`
 	Environments map[string]Environment `yaml:"environments"`
 	Pipeline     []Step                 `yaml:"pipeline"`
+	Region       string                 `yaml:"region"`
 }
 
 // Definition will be used to configure task definitions
@@ -61,6 +63,15 @@ func LoadConfig() (config Config, err error) {
 
 	if envConfig.ClusterName != "" {
 		config.ClusterName = envConfig.ClusterName
+	}
+
+	// Check and set region
+	if config.Region == "" && envConfig.Region == "" {
+		config.Region = "eu-west-1"
+	}
+
+	if envConfig.Region != "" {
+		config.Region = envConfig.Region
 	}
 
 	// Check and set Pipeline
