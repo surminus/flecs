@@ -10,9 +10,9 @@ func (config Config) Run() (err error) {
 		case "service":
 			Log.Info("Name: ", step.Service.Name)
 
-			serviceStep := step.Service
-			serviceStep.clientECS = ClientECS{}
-			serviceStep.config = config
+			// serviceStep := step.Service
+			// serviceStep.clientECS = ClientECS{}
+			// serviceStep.config = config
 
 		case "script":
 			Log.Info("Name: ", step.Script.Name)

@@ -12,20 +12,27 @@ import (
 
 // Environment is environment specific configuration
 type Environment struct {
-	ClusterName string `yaml:"cluster_name"`
-	Pipeline    []Step `yaml:"pipeline"`
-	Region      string `yaml:"region"`
+	ClusterName        string   `yaml:"cluster_name"`
+	Pipeline           []Step   `yaml:"pipeline"`
+	Region             string   `yaml:"region"`
+	SecurityGroupNames []string `yaml:"security_group_names"`
+	SubnetNames        []string `yaml:"subnet_names"`
 }
 
 // Config represents all options that can be configured by a flecs config file
 type Config struct {
-	ClusterName  string                 `yaml:"cluster_name"`
-	Definitions  map[string]Definition  `yaml:"definitions"`
-	Environments map[string]Environment `yaml:"environments"`
-	Pipeline     []Step                 `yaml:"pipeline"`
-	ProjectName  string                 `yaml:"project_name"`
-	Region       string                 `yaml:"region"`
-	Services     map[string]Service     `yaml:"services"`
+	ClusterName        string                 `yaml:"cluster_name"`
+	Definitions        map[string]Definition  `yaml:"definitions"`
+	Environments       map[string]Environment `yaml:"environments"`
+	Pipeline           []Step                 `yaml:"pipeline"`
+	ProjectName        string                 `yaml:"project_name"`
+	Region             string                 `yaml:"region"`
+	Services           map[string]Service     `yaml:"services"`
+	SecurityGroupNames []string               `yaml:"security_group_names"`
+	SubnetNames        []string               `yaml:"subnet_names"`
+
+	// Set automatically
+	EnvironmentName string
 }
 
 // Step describes a step in the pipeline
@@ -83,6 +90,16 @@ func LoadConfig() (config Config, err error) {
 
 	if envConfig.Region != "" {
 		config.Region = envConfig.Region
+	}
+
+	// Check and set security group names
+	if len(envConfig.SecurityGroupNames) > 0 {
+		config.SecurityGroupNames = envConfig.SecurityGroupNames
+	}
+
+	// Check and set subnet names
+	if len(envConfig.SubnetNames) > 0 {
+		config.SubnetNames = envConfig.SubnetNames
 	}
 
 	// Check and set Pipeline
