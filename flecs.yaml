@@ -47,6 +47,7 @@ definitions:
     containers:
       - name: rails
         image: some/image
+        dynamic_tag: true
     healthcheck:
       command:
     placement_constraints:

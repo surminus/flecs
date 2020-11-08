@@ -27,6 +27,7 @@ type Definition struct {
 // Container sets up a container definition
 type Container struct {
 	Command     string       `yaml:"command"`
+	DynamicTag  bool         `yaml:"dynamic_tag"`
 	Essential   bool         `yaml:"essential"`
 	HealthCheck HealthCheck  `yaml:"healthcheck"`
 	Image       string       `yaml:"image"`
@@ -212,6 +213,16 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix str
 				ReadOnly:        aws.Bool(volume.ReadOnly),
 				SourceContainer: aws.String(volume.SourceContainer),
 			})
+		}
+
+		var image string
+		if container.DynamicTag {
+			imgSplit := strings.Split(image, ":")
+			if len(imgSplit) > 1 {
+				return def, fmt.Errorf("do not specify a tag using \":\" when dynamic tag is specifed")
+			}
+
+			image = strings.Join([]string{image, cfg.Tag}, ":")
 		}
 
 		containerDefinition := ecs.ContainerDefinition{
