@@ -15,6 +15,7 @@ import (
 type Environment struct {
 	ClusterName          string            `yaml:"cluster_name"`
 	EnvironmentVariables map[string]string `yaml:"environment_variables"`
+	LogGroupName         string            `yaml:"log_group_name"`
 	Pipeline             []Step            `yaml:"pipeline"`
 	Region               string            `yaml:"region"`
 	Secrets              []string          `yaml:"secrets"`
@@ -28,6 +29,7 @@ type Config struct {
 	Definitions          map[string]Definition  `yaml:"definitions"`
 	EnvironmentVariables map[string]string      `yaml:"environment_variables"`
 	Environments         map[string]Environment `yaml:"environments"`
+	LogGroupName         string                 `yaml:"log_group_name"`
 	Pipeline             []Step                 `yaml:"pipeline"`
 	ProjectName          string                 `yaml:"project_name"`
 	Region               string                 `yaml:"region"`
@@ -164,6 +166,11 @@ func LoadConfig() (config Config, err error) {
 	}
 
 	config.Secrets = mergedSecrets
+
+	// Check and set LogGroupName
+	if config.LogGroupName == "" && envConfig.LogGroupName != "" {
+		config.LogGroupName = envConfig.LogGroupName
+	}
 
 	// Check and set Pipeline
 	if len(config.Pipeline) < 1 && len(envConfig.Pipeline) < 1 {
