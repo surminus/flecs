@@ -27,9 +27,9 @@ type Definition struct{}
 
 // Step describes a step in the pipeline
 type Step struct {
-	Script  Script  `yaml:"script"`
-	Service Service `yaml:"service"`
-	Task    Task    `yaml:"task"`
+	Script  ScriptStep  `yaml:"script"`
+	Service ServiceStep `yaml:"service"`
+	Task    TaskStep    `yaml:"task"`
 	Type    string
 }
 
@@ -74,9 +74,9 @@ func LoadConfig() (config Config, err error) {
 
 	// Check Pipeline for syntax errors
 	for index, step := range config.Pipeline {
-		serviceSet := step.Service != (Service{})
-		taskSet := step.Task != (Task{})
-		scriptSet := step.Script != (Script{})
+		serviceSet := step.Service != (ServiceStep{})
+		taskSet := step.Task != (TaskStep{})
+		scriptSet := step.Script != (ScriptStep{})
 
 		if !serviceSet && !taskSet && !scriptSet {
 			return config, fmt.Errorf("invalid step config on step %d", index)

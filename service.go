@@ -1,7 +1,7 @@
 package main
 
-// Service will update one or many services and wait for completion
-type Service struct {
+// ServiceStep will update a Service
+type ServiceStep struct {
 	Definition  string `yaml:"definition"`
 	Description string `yaml:"description"`
 	Name        string `yaml:"name"`
