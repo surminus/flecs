@@ -104,7 +104,7 @@ func LoadConfig() (config Config, err error) {
 
 	// Set ClusterName
 	if config.ClusterName == "" && envConfig.ClusterName == "" {
-		config.ClusterName = "default"
+		config.ClusterName = "flecs"
 	}
 
 	if envConfig.ClusterName != "" {

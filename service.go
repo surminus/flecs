@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -48,6 +49,70 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 	clientEC2, err := c.EC2()
 	if err != nil {
 		return serviceName, err
+	}
+
+	// Check if the cluster exists
+	describeClusterInput := ecs.DescribeClustersInput{
+		Clusters: aws.StringSlice([]string{cfg.ClusterName}),
+	}
+	describeCluster, err := clientECS.Client.DescribeClusters(&describeClusterInput)
+	if err != nil {
+		return serviceName, err
+	}
+	clusterMissing := false
+
+	if len(describeCluster.Clusters) > 0 {
+		if aws.StringValue(describeCluster.Clusters[0].Status) != "ACTIVE" {
+			clusterMissing = true
+		}
+	} else {
+		clusterMissing = true
+	}
+
+	if !clusterMissing {
+		Log.Infof("Using cluster %s", aws.StringValue(describeCluster.Clusters[0].ClusterName))
+	}
+
+	// Create a default cluster if it doesn't
+	if clusterMissing {
+		Log.Infof("Creating cluster %s", cfg.ClusterName)
+
+		createClusterInput := ecs.CreateClusterInput{
+			ClusterName: aws.String(cfg.ClusterName),
+		}
+		_, err := clientECS.Client.CreateCluster(&createClusterInput)
+		if err != nil {
+			return serviceName, err
+		}
+
+		clusterCreated := false
+		for count := 0; count < 30; count++ {
+			Log.Infof("Waiting for cluster to provision")
+			time.Sleep(10 * time.Second)
+
+			describeClusterInput := ecs.DescribeClustersInput{
+				Clusters: aws.StringSlice([]string{cfg.ClusterName}),
+			}
+			describeCluster, err := clientECS.Client.DescribeClusters(&describeClusterInput)
+			if err != nil {
+				return serviceName, err
+			}
+
+			if len(describeCluster.Clusters) < 1 {
+				continue
+			}
+
+			cluster := describeCluster.Clusters[0]
+			if aws.StringValue(cluster.Status) == "ACTIVE" {
+				clusterCreated = true
+				break
+			}
+		}
+
+		if !clusterCreated {
+			Log.Fatal("Failed to create cluster!")
+		}
+
 	}
 
 	// Configure service name
