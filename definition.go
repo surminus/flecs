@@ -208,8 +208,6 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 	}
 
 	for _, container := range d.Containers {
-		command := strings.Split(container.Command, " ")
-
 		// Set healthcheck options if they exist
 		var healthcheck ecs.HealthCheck
 		healthcheckCommand := strings.Split(container.HealthCheck.Command, " ")
@@ -268,7 +266,6 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 		}
 
 		containerDefinition := ecs.ContainerDefinition{
-			Command:          aws.StringSlice(command),
 			Environment:      environmentVariables,
 			Essential:        aws.Bool(essential),
 			Image:            aws.String(container.Image),
@@ -278,6 +275,10 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 			HealthCheck:      &healthcheck,
 			MountPoints:      mountPoints,
 			VolumesFrom:      volumesFrom,
+		}
+
+		if container.Command != "" {
+			containerDefinition.SetCommand(aws.StringSlice(strings.Split(container.Command, " ")))
 		}
 
 		def = append(def, &containerDefinition)
