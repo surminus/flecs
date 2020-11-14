@@ -210,12 +210,27 @@ func (d Definition) generateContainerDefinitions(cfg Config, logGroupName, logSt
 	for _, container := range d.Containers {
 		command := strings.Split(container.Command, " ")
 
-		healthcheck := ecs.HealthCheck{
-			Command:     aws.StringSlice(strings.Split(container.HealthCheck.Command, " ")),
-			Interval:    aws.Int64(container.HealthCheck.Interval),
-			Retries:     aws.Int64(container.HealthCheck.Retries),
-			StartPeriod: aws.Int64(container.HealthCheck.StartPeriod),
-			Timeout:     aws.Int64(container.HealthCheck.Timeout),
+		// Set healthcheck options if they exist
+		var healthcheck ecs.HealthCheck
+		healthcheckCommand := strings.Split(container.HealthCheck.Command, " ")
+		if len(healthcheckCommand) > 0 {
+			healthcheck.SetCommand(aws.StringSlice(healthcheckCommand))
+
+			if container.HealthCheck.Interval != 0 {
+				healthcheck.SetInterval(container.HealthCheck.Interval)
+			}
+
+			if container.HealthCheck.Retries != 0 {
+				healthcheck.SetRetries(container.HealthCheck.Retries)
+			}
+
+			if container.HealthCheck.StartPeriod != 0 {
+				healthcheck.SetStartPeriod(container.HealthCheck.StartPeriod)
+			}
+
+			if container.HealthCheck.Timeout != 0 {
+				healthcheck.SetTimeout(container.HealthCheck.Timeout)
+			}
 		}
 
 		essential := false
