@@ -115,11 +115,7 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 
 	}
 
-	// Configure service name
-	serviceNamePrefix := strings.Join([]string{"flecs", cfg.ProjectName}, "-")
-	if cfg.ProjectName != s.Name {
-		serviceNamePrefix = strings.Join([]string{serviceNamePrefix, s.Name}, "-")
-	}
+	serviceNamePrefix := s.serviceNamePrefix(cfg)
 
 	// Check if the service already exists
 	serviceName, err = s.checkServiceExists(clientECS, cfg, serviceNamePrefix)
@@ -219,6 +215,49 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 
 // Update updates a service that already exists
 func (s Service) Update() (serviceName string, err error) {
+	return serviceName, err
+}
+
+// Delete a service (but not created log groups, clusters or roles)
+func (s Service) Destroy(c Client, cfg Config) (serviceName string, err error) {
+	// Set up ECS client
+	clientECS, err := c.ECS()
+	if err != nil {
+		return serviceName, err
+	}
+
+	// Check if the service already exists
+	serviceName, err = s.checkServiceExists(clientECS, cfg, s.serviceNamePrefix(cfg))
+	if err != nil || serviceName == "" {
+		return serviceName, err
+	}
+
+	deleteServiceInput := ecs.DeleteServiceInput{
+		Cluster: aws.String(cfg.ClusterName),
+		Force:   aws.Bool(true),
+		Service: aws.String(serviceName),
+	}
+
+	Log.Info("Deleting service")
+	_, err = clientECS.Client.DeleteService(&deleteServiceInput)
+	if err != nil {
+		return serviceName, err
+	}
+
+	for count := 0; count < 30; count++ {
+		serviceName, err = s.checkServiceExists(clientECS, cfg, s.serviceNamePrefix(cfg))
+		if err != nil {
+			return serviceName, err
+		}
+
+		if serviceName == "" {
+			break
+		}
+
+		Log.Info("Waiting for service to terminate")
+		time.Sleep(10 * time.Second)
+	}
+
 	return serviceName, err
 }
 
@@ -327,4 +366,14 @@ func (c ClientEC2) getDefaultSubnetIDs() (ids []string, err error) {
 	}
 
 	return ids, err
+}
+
+func (s Service) serviceNamePrefix(cfg Config) (serviceNamePrefix string) {
+	// Configure service name
+	serviceNamePrefix = strings.Join([]string{"flecs", cfg.ProjectName}, "-")
+	if cfg.ProjectName != s.Name {
+		serviceNamePrefix = strings.Join([]string{serviceNamePrefix, s.Name}, "-")
+	}
+
+	return serviceNamePrefix
 }

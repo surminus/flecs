@@ -23,7 +23,7 @@ func execute() {
 	viper.AddConfigPath(".")
 	CheckError(viper.ReadInConfig())
 
-	cmd.AddCommand(deploy)
+	cmd.AddCommand(deploy, rm)
 
 	// Run the thing
 	if err := cmd.Execute(); err != nil {
@@ -46,9 +46,28 @@ var deploy = &cobra.Command{
 		config, err := LoadConfig()
 		CheckError(err)
 
-		err = config.Run()
+		err = config.Deploy()
 		CheckError(err)
 
 		Log.Info("END")
+	},
+}
+
+// rm is used for deleting resources
+var rm = &cobra.Command{
+	Use:  "rm",
+	Args: cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		// Each other function should accept the config type
+		config, err := LoadConfig()
+		CheckError(err)
+
+		switch args[0] {
+		case "service":
+			err = config.Remove("service", args[1])
+			CheckError(err)
+		default:
+			Log.Fatalf("Unrecognised resource %s", args[0])
+		}
 	},
 }

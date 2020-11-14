@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-// Run runs through the pipeline and performs each task
-func (config Config) Run() (err error) {
+// Deploy runs through the pipeline and performs each task
+func (config Config) Deploy() (err error) {
 	for _, step := range config.Pipeline {
 		Log.Info("Step: ", step.Type)
 
@@ -39,6 +39,29 @@ func (config Config) Run() (err error) {
 		default:
 			Log.Fatal("Invalid configuration")
 		}
+	}
+
+	return err
+}
+
+// Remove deletes a resource
+func (config Config) Remove(resource, name string) (err error) {
+	switch resource {
+	case "service":
+		service, ok := config.Services[name]
+		if !ok {
+			return fmt.Errorf("cannot find service configured called %s", name)
+		}
+
+		service.Name = name
+
+		client := Client{Region: config.Region}
+		serviceName, err := service.Destroy(client, config)
+		if err != nil {
+			return err
+		}
+
+		Log.Infof("Deleted service %s", serviceName)
 	}
 
 	return err
