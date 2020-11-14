@@ -140,8 +140,18 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 		&ecs.Volume{Name: aws.String(d.VolumeName)},
 	}
 
-	cpu := strconv.Itoa(d.CPU)
-	memory := strconv.Itoa(d.Memory)
+	var cpu, memory string
+	if d.CPU == 0 {
+		cpu = "256"
+	} else {
+		cpu = strconv.Itoa(d.CPU)
+	}
+
+	if d.Memory == 0 {
+		memory = "512"
+	} else {
+		memory = strconv.Itoa(d.Memory)
+	}
 
 	registerTaskDefinitionInput := ecs.RegisterTaskDefinitionInput{
 		ContainerDefinitions: containerDefinitions,
