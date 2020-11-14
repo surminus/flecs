@@ -133,10 +133,23 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		return serviceName, err
 	}
 
+	assignPublicIP := cfg.AssignPublicIP
+
 	// Get subnet IDs
 	subnetIDs, err := clientEC2.getSubnetIDs(cfg.SubnetNames)
 	if err != nil {
 		return serviceName, err
+	}
+
+	// Use default VPC subnets if no subnets configured
+	if len(subnetIDs) == 0 {
+		subnetIDs, err = clientEC2.getDefaultSubnetIDs()
+		if err != nil {
+			return serviceName, err
+		}
+
+		// Always assign a public IP for default subnets
+		assignPublicIP = true
 	}
 
 	// Register task definition
@@ -167,6 +180,10 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		},
 		ServiceName:    aws.String(serviceName),
 		TaskDefinition: aws.String(taskDefinitionArn),
+	}
+
+	if assignPublicIP {
+		createServiceInput.NetworkConfiguration.AwsvpcConfiguration.SetAssignPublicIp("ENABLED")
 	}
 
 	if s.LoadBalancer != (LoadBalancer{}) {
@@ -276,6 +293,26 @@ func (c ClientEC2) getSubnetIDs(names []string) (ids []string, err error) {
 	}
 
 	result, err := c.Client.DescribeSubnets(&input)
+	if err != nil {
+		return ids, err
+	}
+
+	for _, s := range result.Subnets {
+		ids = append(ids, aws.StringValue(s.SubnetId))
+	}
+
+	return ids, err
+}
+
+func (c ClientEC2) getDefaultSubnetIDs() (ids []string, err error) {
+	result, err := c.Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("default-for-az"),
+				Values: aws.StringSlice([]string{"true"}),
+			},
+		},
+	})
 	if err != nil {
 		return ids, err
 	}

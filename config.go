@@ -13,6 +13,7 @@ import (
 
 // Environment is environment specific configuration
 type Environment struct {
+	AssignPublicIP       bool              `yaml:"public_ip"`
 	ClusterName          string            `yaml:"cluster_name"`
 	EnvironmentVariables map[string]string `yaml:"environment_variables"`
 	LogGroupName         string            `yaml:"log_group_name"`
@@ -25,6 +26,7 @@ type Environment struct {
 
 // Config represents all options that can be configured by a flecs config file
 type Config struct {
+	AssignPublicIP       bool                   `yaml:"public_ip"`
 	ClusterName          string                 `yaml:"cluster_name"`
 	Definitions          map[string]Definition  `yaml:"definitions"`
 	EnvironmentVariables map[string]string      `yaml:"environment_variables"`
