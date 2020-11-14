@@ -178,7 +178,7 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 	return arn, err
 }
 
-func (d Definition) generateContainerDefinitions(cfg Config, logGroupName, logStreamPrefix string) (def []*ecs.ContainerDefinition, err error) {
+func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, logGroupName string) (def []*ecs.ContainerDefinition, err error) {
 	// Secrets
 	var secrets []*ecs.Secret
 	for name, valueFrom := range cfg.Secrets {
