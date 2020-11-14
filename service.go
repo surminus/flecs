@@ -199,12 +199,12 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		return serviceName, err
 	}
 
-	Log.Infof("Created service %s", aws.StringValue(output.Service.ServiceArn))
+	Log.Infof("Waiting for service to be ready: %s", aws.StringValue(output.Service.ServiceArn))
 
 	// Wait for service to become stable
 	err = client.WaitUntilServicesStable(&ecs.DescribeServicesInput{
 		Cluster:  aws.String(cfg.ClusterName),
-		Services: aws.StringSlice([]string{aws.StringValue(output.Service.ServiceArn)}),
+		Services: aws.StringSlice([]string{aws.StringValue(output.Service.ServiceName)}),
 	})
 	if err != nil {
 		return serviceName, err
