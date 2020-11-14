@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -58,8 +59,8 @@ type VolumeFrom struct {
 	SourceContainer string `yaml:"source_container"`
 }
 
-// Create registers a new task definition, and creates an execution role if one is not
-// supplied
+// Create registers a new task definition, and creates any resources if they
+// do not exist
 func (d Definition) Create(c Client, cfg Config, name string) (arn string, err error) {
 	// Set up ECS client
 	clientECS, err := c.ECS()
@@ -107,8 +108,18 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 		family = strings.Join([]string{family, cfg.EnvironmentName}, "-")
 	}
 
+	logGroupName := cfg.LogGroupName
+	if logGroupName == "" {
+		defaultLogGroupName := fmt.Sprintf("/flecs/%s", cfg.ProjectName)
+		err = d.createDefaultLogGroup(c, defaultLogGroupName)
+		if err != nil {
+			return arn, err
+		}
+		logGroupName = defaultLogGroupName
+	}
+
 	// Configure container definitions
-	containerDefinitions, err := d.generateContainerDefinitions(cfg, name)
+	containerDefinitions, err := d.generateContainerDefinitions(cfg, name, logGroupName)
 	if err != nil {
 		return arn, err
 	}
@@ -157,7 +168,7 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 	return arn, err
 }
 
-func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix string) (def []*ecs.ContainerDefinition, err error) {
+func (d Definition) generateContainerDefinitions(cfg Config, logGroupName, logStreamPrefix string) (def []*ecs.ContainerDefinition, err error) {
 	// Secrets
 	var secrets []*ecs.Secret
 	for name, valueFrom := range cfg.Secrets {
@@ -182,7 +193,7 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix str
 		Options: aws.StringMap(map[string]string{
 			"awslogs-region":        cfg.Region,
 			"awslogs-stream-prefix": logStreamPrefix,
-			"awslogs-group":         cfg.LogGroupName,
+			"awslogs-group":         logGroupName,
 		}),
 	}
 
@@ -309,4 +320,37 @@ func (d Definition) createDefaultExecutionRole(c Client) (roleArn string, err er
 	Log.Infof("Created role %s", defaultExecutionRoleName)
 
 	return aws.StringValue(createRoleOutput.Role.Arn), err
+}
+
+func (d Definition) createDefaultLogGroup(c Client, logGroupName string) (err error) {
+	client, err := c.CloudWatchLogs()
+	if err != nil {
+		return err
+	}
+
+	describeLogGroupsInput := cloudwatchlogs.DescribeLogGroupsInput{
+		LogGroupNamePrefix: aws.String(logGroupName),
+	}
+
+	// Check if it exists already
+	resp, err := client.Client.DescribeLogGroups(&describeLogGroupsInput)
+	if err != nil {
+		return err
+	}
+
+	if len(resp.LogGroups) > 0 {
+		return err
+	}
+
+	createLogGroupInput := cloudwatchlogs.CreateLogGroupInput{
+		LogGroupName: aws.String(logGroupName),
+	}
+
+	_, err = client.Client.CreateLogGroup(&createLogGroupInput)
+	if err != nil {
+		return err
+	}
+
+	Log.Infof("Created log group %s", logGroupName)
+	return err
 }

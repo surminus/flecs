@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/aws/aws-sdk-go/service/ecs"
@@ -36,6 +38,11 @@ type ClientSTS struct {
 // ClientIAM uses iface to allow us to mock responses in teiam
 type ClientIAM struct {
 	Client iamiface.IAMAPI
+}
+
+// ClientCloudWatchLogs uses iface to allow us to mock responses in tecloudwatchlogs
+type ClientCloudWatchLogs struct {
+	Client cloudwatchlogsiface.CloudWatchLogsAPI
 }
 
 // ECS creates an ECS client
@@ -89,6 +96,20 @@ func (c Client) IAM() (client ClientIAM, err error) {
 
 	client = ClientIAM{
 		Client: iam.New(session),
+	}
+
+	return client, err
+}
+
+// CloudWatchLogs creates an CloudWatchLogs client
+func (c Client) CloudWatchLogs() (client ClientCloudWatchLogs, err error) {
+	session, err := c.session()
+	if err != nil {
+		return client, err
+	}
+
+	client = ClientCloudWatchLogs{
+		Client: cloudwatchlogs.New(session),
 	}
 
 	return client, err
