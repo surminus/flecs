@@ -16,6 +16,8 @@ environments:
       FOO: /path/to/parameter/FOO
 
 pipeline:
+  - docker:
+      name: Build and push image
   - task:
       name: show uptime
       command: uptime
