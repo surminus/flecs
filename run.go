@@ -36,6 +36,13 @@ func (config Config) Deploy() (err error) {
 			if err != nil {
 				return err
 			}
+		case "docker":
+			Log.Infof("Name: %s", step.Docker.Name)
+			client := Client{Region: config.Region}
+			err = step.Docker.Run(client, config)
+			if err != nil {
+				return err
+			}
 		default:
 			Log.Fatal("Invalid configuration")
 		}

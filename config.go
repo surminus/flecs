@@ -49,6 +49,7 @@ type Config struct {
 
 // Step describes a step in the pipeline
 type Step struct {
+	Docker  DockerStep  `yaml:"docker"`
 	Script  ScriptStep  `yaml:"script"`
 	Service ServiceStep `yaml:"service"`
 	Task    TaskStep    `yaml:"task"`
@@ -177,26 +178,27 @@ func LoadConfig() (config Config, err error) {
 		serviceSet := step.Service != (ServiceStep{})
 		taskSet := step.Task != (TaskStep{})
 		scriptSet := step.Script != (ScriptStep{})
+		dockerSet := step.Docker != (DockerStep{})
 
-		if !serviceSet && !taskSet && !scriptSet {
+		if !serviceSet && !taskSet && !scriptSet && !dockerSet {
 			return config, fmt.Errorf("invalid step config on step %d", index)
 		}
 
-		if serviceSet && taskSet || taskSet && scriptSet || serviceSet && scriptSet {
-			return config, fmt.Errorf("must configure only one of: service, task, script")
-		}
-
 		// Here we set as a string what kind of step it is
-		if serviceSet && !taskSet && !scriptSet {
+		if serviceSet {
 			config.Pipeline[index].Type = "service"
 		}
 
-		if taskSet && !scriptSet && !serviceSet {
+		if taskSet {
 			config.Pipeline[index].Type = "task"
 		}
 
-		if scriptSet && !serviceSet && !taskSet {
+		if scriptSet {
 			config.Pipeline[index].Type = "script"
+		}
+
+		if dockerSet {
+			config.Pipeline[index].Type = "docker"
 		}
 	}
 
