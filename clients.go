@@ -20,99 +20,31 @@ type Client struct {
 	Region string
 }
 
-// ClientECS uses iface to allow us to mock responses in tests
-type ClientECS struct {
-	Client ecsiface.ECSAPI
+// Clients contains all AWS clients we're using
+type Clients struct {
+	CloudWatchLogs cloudwatchlogsiface.CloudWatchLogsAPI
+	EC2            ec2iface.EC2API
+	ECS            ecsiface.ECSAPI
+	IAM            iamiface.IAMAPI
+	STS            stsiface.STSAPI
 }
 
-// ClientEC2 uses iface to allow us to mock responses in tests
-type ClientEC2 struct {
-	Client ec2iface.EC2API
-}
-
-// ClientSTS uses iface to allow us to mock responses in tests
-type ClientSTS struct {
-	Client stsiface.STSAPI
-}
-
-// ClientIAM uses iface to allow us to mock responses in teiam
-type ClientIAM struct {
-	Client iamiface.IAMAPI
-}
-
-// ClientCloudWatchLogs uses iface to allow us to mock responses in tecloudwatchlogs
-type ClientCloudWatchLogs struct {
-	Client cloudwatchlogsiface.CloudWatchLogsAPI
-}
-
-// ECS creates an ECS client
-func (c Client) ECS() (client ClientECS, err error) {
+// InitClients sets up all clients that we use
+func (c Client) InitClients() (clients Clients, err error) {
 	session, err := c.session()
 	if err != nil {
-		return client, err
+		return clients, err
 	}
 
-	client = ClientECS{
-		Client: ecs.New(session),
+	clients = Clients{
+		CloudWatchLogs: cloudwatchlogs.New(session),
+		EC2:            ec2.New(session),
+		ECS:            ecs.New(session),
+		IAM:            iam.New(session),
+		STS:            sts.New(session),
 	}
 
-	return client, err
-}
-
-// EC2 creates an EC2 client
-func (c Client) EC2() (client ClientEC2, err error) {
-	session, err := c.session()
-	if err != nil {
-		return client, err
-	}
-
-	client = ClientEC2{
-		Client: ec2.New(session),
-	}
-
-	return client, err
-}
-
-// STS creates an STS client
-func (c Client) STS() (client ClientSTS, err error) {
-	session, err := c.session()
-	if err != nil {
-		return client, err
-	}
-
-	client = ClientSTS{
-		Client: sts.New(session),
-	}
-
-	return client, err
-}
-
-// IAM creates an IAM client
-func (c Client) IAM() (client ClientIAM, err error) {
-	session, err := c.session()
-	if err != nil {
-		return client, err
-	}
-
-	client = ClientIAM{
-		Client: iam.New(session),
-	}
-
-	return client, err
-}
-
-// CloudWatchLogs creates an CloudWatchLogs client
-func (c Client) CloudWatchLogs() (client ClientCloudWatchLogs, err error) {
-	session, err := c.session()
-	if err != nil {
-		return client, err
-	}
-
-	client = ClientCloudWatchLogs{
-		Client: cloudwatchlogs.New(session),
-	}
-
-	return client, err
+	return clients, err
 }
 
 func (c Client) session() (sess *session.Session, err error) {

@@ -39,23 +39,18 @@ type LoadBalancer struct {
 // service
 func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 	// Set up ECS client
-	clientECS, err := c.ECS()
+	clients, err := c.InitClients()
 	if err != nil {
 		return serviceName, err
 	}
-	client := clientECS.Client
 
-	// Set up EC2 client
-	clientEC2, err := c.EC2()
-	if err != nil {
-		return serviceName, err
-	}
+	clientECS := clients.ECS
 
 	// Check if the cluster exists
 	describeClusterInput := ecs.DescribeClustersInput{
 		Clusters: aws.StringSlice([]string{cfg.ClusterName}),
 	}
-	describeCluster, err := clientECS.Client.DescribeClusters(&describeClusterInput)
+	describeCluster, err := clientECS.DescribeClusters(&describeClusterInput)
 	if err != nil {
 		return serviceName, err
 	}
@@ -80,7 +75,7 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		createClusterInput := ecs.CreateClusterInput{
 			ClusterName: aws.String(cfg.ClusterName),
 		}
-		_, err := clientECS.Client.CreateCluster(&createClusterInput)
+		_, err := clientECS.CreateCluster(&createClusterInput)
 		if err != nil {
 			return serviceName, err
 		}
@@ -93,7 +88,7 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 			describeClusterInput := ecs.DescribeClustersInput{
 				Clusters: aws.StringSlice([]string{cfg.ClusterName}),
 			}
-			describeCluster, err := clientECS.Client.DescribeClusters(&describeClusterInput)
+			describeCluster, err := clientECS.DescribeClusters(&describeClusterInput)
 			if err != nil {
 				return serviceName, err
 			}
@@ -118,13 +113,13 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 	serviceNamePrefix := s.serviceNamePrefix(cfg)
 
 	// Check if the service already exists
-	serviceName, err = s.checkServiceExists(clientECS, cfg, serviceNamePrefix)
+	serviceName, err = s.checkServiceExists(clients, cfg, serviceNamePrefix)
 	if err != nil || serviceName != "" {
 		return serviceName, err
 	}
 
 	// Get security group IDs
-	securityGroupIDs, err := clientEC2.getSecurityGroupIDs(cfg.SecurityGroupNames)
+	securityGroupIDs, err := clients.getSecurityGroupIDs(cfg.SecurityGroupNames)
 	if err != nil {
 		return serviceName, err
 	}
@@ -132,14 +127,14 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 	assignPublicIP := cfg.AssignPublicIP
 
 	// Get subnet IDs
-	subnetIDs, err := clientEC2.getSubnetIDs(cfg.SubnetNames)
+	subnetIDs, err := clients.getSubnetIDs(cfg.SubnetNames)
 	if err != nil {
 		return serviceName, err
 	}
 
 	// Use default VPC subnets if no subnets configured
 	if len(subnetIDs) == 0 {
-		subnetIDs, err = clientEC2.getDefaultSubnetIDs()
+		subnetIDs, err = clients.getDefaultSubnetIDs()
 		if err != nil {
 			return serviceName, err
 		}
@@ -194,7 +189,7 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		createServiceInput.SetLoadBalancers(loadBalancers)
 	}
 
-	output, err := client.CreateService(&createServiceInput)
+	output, err := clientECS.CreateService(&createServiceInput)
 	if err != nil {
 		return serviceName, err
 	}
@@ -202,7 +197,7 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 	Log.Infof("Waiting for service to be ready: %s", aws.StringValue(output.Service.ServiceArn))
 
 	// Wait for service to become stable
-	err = client.WaitUntilServicesStable(&ecs.DescribeServicesInput{
+	err = clientECS.WaitUntilServicesStable(&ecs.DescribeServicesInput{
 		Cluster:  aws.String(cfg.ClusterName),
 		Services: aws.StringSlice([]string{aws.StringValue(output.Service.ServiceName)}),
 	})
@@ -221,13 +216,15 @@ func (s Service) Update() (serviceName string, err error) {
 // Delete a service (but not created log groups, clusters or roles)
 func (s Service) Destroy(c Client, cfg Config) (serviceName string, err error) {
 	// Set up ECS client
-	clientECS, err := c.ECS()
+	clients, err := c.InitClients()
 	if err != nil {
 		return serviceName, err
 	}
 
+	clientECS := clients.ECS
+
 	// Check if the service already exists
-	serviceName, err = s.checkServiceExists(clientECS, cfg, s.serviceNamePrefix(cfg))
+	serviceName, err = s.checkServiceExists(clients, cfg, s.serviceNamePrefix(cfg))
 	if err != nil || serviceName == "" {
 		return serviceName, err
 	}
@@ -239,13 +236,13 @@ func (s Service) Destroy(c Client, cfg Config) (serviceName string, err error) {
 	}
 
 	Log.Info("Deleting service")
-	_, err = clientECS.Client.DeleteService(&deleteServiceInput)
+	_, err = clientECS.DeleteService(&deleteServiceInput)
 	if err != nil {
 		return serviceName, err
 	}
 
 	for count := 0; count < 30; count++ {
-		serviceName, err = s.checkServiceExists(clientECS, cfg, s.serviceNamePrefix(cfg))
+		serviceName, err = s.checkServiceExists(clients, cfg, s.serviceNamePrefix(cfg))
 		if err != nil {
 			return serviceName, err
 		}
@@ -261,8 +258,8 @@ func (s Service) Destroy(c Client, cfg Config) (serviceName string, err error) {
 	return serviceName, err
 }
 
-func (s Service) checkServiceExists(c ClientECS, cfg Config, serviceNamePrefix string) (serviceName string, err error) {
-	client := c.Client
+func (s Service) checkServiceExists(c Clients, cfg Config, serviceNamePrefix string) (serviceName string, err error) {
+	client := c.ECS
 
 	// Check if service already exists, if so, return early with the name
 	listServiceInput := ecs.ListServicesInput{
@@ -304,7 +301,7 @@ func (s Service) checkServiceExists(c ClientECS, cfg Config, serviceNamePrefix s
 	return serviceName, err
 }
 
-func (c ClientEC2) getSecurityGroupIDs(names []string) (ids []string, err error) {
+func (c Clients) getSecurityGroupIDs(names []string) (ids []string, err error) {
 	input := ec2.DescribeSecurityGroupsInput{
 		Filters: []*ec2.Filter{
 			{
@@ -314,7 +311,7 @@ func (c ClientEC2) getSecurityGroupIDs(names []string) (ids []string, err error)
 		},
 	}
 
-	result, err := c.Client.DescribeSecurityGroups(&input)
+	result, err := c.EC2.DescribeSecurityGroups(&input)
 	if err != nil {
 		return ids, err
 	}
@@ -326,7 +323,7 @@ func (c ClientEC2) getSecurityGroupIDs(names []string) (ids []string, err error)
 	return ids, err
 }
 
-func (c ClientEC2) getSubnetIDs(names []string) (ids []string, err error) {
+func (c Clients) getSubnetIDs(names []string) (ids []string, err error) {
 	input := ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			{
@@ -336,7 +333,7 @@ func (c ClientEC2) getSubnetIDs(names []string) (ids []string, err error) {
 		},
 	}
 
-	result, err := c.Client.DescribeSubnets(&input)
+	result, err := c.EC2.DescribeSubnets(&input)
 	if err != nil {
 		return ids, err
 	}
@@ -348,8 +345,8 @@ func (c ClientEC2) getSubnetIDs(names []string) (ids []string, err error) {
 	return ids, err
 }
 
-func (c ClientEC2) getDefaultSubnetIDs() (ids []string, err error) {
-	result, err := c.Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
+func (c Clients) getDefaultSubnetIDs() (ids []string, err error) {
+	result, err := c.EC2.DescribeSubnets(&ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			{
 				Name:   aws.String("default-for-az"),

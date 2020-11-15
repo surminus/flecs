@@ -63,20 +63,16 @@ type VolumeFrom struct {
 // do not exist
 func (d Definition) Create(c Client, cfg Config, name string) (arn string, err error) {
 	// Set up ECS client
-	clientECS, err := c.ECS()
+	clients, err := c.InitClients()
 	if err != nil {
 		return arn, err
 	}
-	client := clientECS.Client
 
-	// Set up STS client
-	clientSTS, err := c.STS()
-	if err != nil {
-		return arn, err
-	}
+	client := clients.ECS
+	clientSTS := clients.STS
 
 	// Fetch current account ID
-	getCallerIdentityOutput, err := clientSTS.Client.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	getCallerIdentityOutput, err := clientSTS.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return arn, err
 	}
@@ -90,7 +86,7 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 	}
 
 	if d.ExecutionRoleName == "" {
-		executionRoleArn, err = d.createDefaultExecutionRole(c)
+		executionRoleArn, err = d.createDefaultExecutionRole(clients)
 		if err != nil {
 			return arn, err
 		}
@@ -111,7 +107,7 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 	logGroupName := cfg.LogGroupName
 	if logGroupName == "" {
 		defaultLogGroupName := fmt.Sprintf("/flecs/%s", cfg.ProjectName)
-		err = d.createDefaultLogGroup(c, defaultLogGroupName)
+		err = d.createDefaultLogGroup(clients, defaultLogGroupName)
 		if err != nil {
 			return arn, err
 		}
@@ -287,15 +283,12 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 	return def, err
 }
 
-func (d Definition) createDefaultExecutionRole(c Client) (roleArn string, err error) {
-	clientIAM, err := c.IAM()
-	if err != nil {
-		return roleArn, err
-	}
+func (d Definition) createDefaultExecutionRole(c Clients) (roleArn string, err error) {
+	clientIAM := c.IAM
 
 	defaultExecutionRoleName := "FlecsDefaultExecutionRole"
 
-	getRoleOutput, err := clientIAM.Client.GetRole(&iam.GetRoleInput{
+	getRoleOutput, err := clientIAM.GetRole(&iam.GetRoleInput{
 		RoleName: aws.String(defaultExecutionRoleName),
 	})
 	if err != nil {
@@ -327,7 +320,7 @@ func (d Definition) createDefaultExecutionRole(c Client) (roleArn string, err er
   ]
 }`
 
-	createRoleOutput, err := clientIAM.Client.CreateRole(&iam.CreateRoleInput{
+	createRoleOutput, err := clientIAM.CreateRole(&iam.CreateRoleInput{
 		RoleName:                 aws.String("FlecsDefaultExecutionRole"),
 		AssumeRolePolicyDocument: aws.String(assumeRolePolicy),
 	})
@@ -335,7 +328,7 @@ func (d Definition) createDefaultExecutionRole(c Client) (roleArn string, err er
 		return roleArn, err
 	}
 
-	_, err = clientIAM.Client.AttachRolePolicy(&iam.AttachRolePolicyInput{
+	_, err = clientIAM.AttachRolePolicy(&iam.AttachRolePolicyInput{
 		PolicyArn: aws.String("aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"),
 		RoleName:  createRoleOutput.Role.RoleName,
 	})
@@ -348,18 +341,15 @@ func (d Definition) createDefaultExecutionRole(c Client) (roleArn string, err er
 	return aws.StringValue(createRoleOutput.Role.Arn), err
 }
 
-func (d Definition) createDefaultLogGroup(c Client, logGroupName string) (err error) {
-	client, err := c.CloudWatchLogs()
-	if err != nil {
-		return err
-	}
+func (d Definition) createDefaultLogGroup(c Clients, logGroupName string) (err error) {
+	client := c.CloudWatchLogs
 
 	describeLogGroupsInput := cloudwatchlogs.DescribeLogGroupsInput{
 		LogGroupNamePrefix: aws.String(logGroupName),
 	}
 
 	// Check if it exists already
-	resp, err := client.Client.DescribeLogGroups(&describeLogGroupsInput)
+	resp, err := client.DescribeLogGroups(&describeLogGroupsInput)
 	if err != nil {
 		return err
 	}
@@ -372,7 +362,7 @@ func (d Definition) createDefaultLogGroup(c Client, logGroupName string) (err er
 		LogGroupName: aws.String(logGroupName),
 	}
 
-	_, err = client.Client.CreateLogGroup(&createLogGroupInput)
+	_, err = client.CreateLogGroup(&createLogGroupInput)
 	if err != nil {
 		return err
 	}
