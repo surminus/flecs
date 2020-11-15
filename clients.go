@@ -7,6 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
+	"github.com/aws/aws-sdk-go/service/ecr"
+	"github.com/aws/aws-sdk-go/service/ecr/ecriface"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -24,6 +26,7 @@ type Client struct {
 type Clients struct {
 	CloudWatchLogs cloudwatchlogsiface.CloudWatchLogsAPI
 	EC2            ec2iface.EC2API
+	ECR            ecriface.ECRAPI
 	ECS            ecsiface.ECSAPI
 	IAM            iamiface.IAMAPI
 	STS            stsiface.STSAPI
@@ -39,6 +42,7 @@ func (c Client) InitClients() (clients Clients, err error) {
 	clients = Clients{
 		CloudWatchLogs: cloudwatchlogs.New(session),
 		EC2:            ec2.New(session),
+		ECR:            ecr.New(session),
 		ECS:            ecs.New(session),
 		IAM:            iam.New(session),
 		STS:            sts.New(session),
