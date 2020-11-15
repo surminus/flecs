@@ -15,6 +15,7 @@ import (
 type Environment struct {
 	AssignPublicIP       bool              `yaml:"public_ip"`
 	ClusterName          string            `yaml:"cluster_name"`
+	ECRRegion            string            `yaml:"ecr_region"`
 	EnvironmentVariables map[string]string `yaml:"environment_variables"`
 	LogGroupName         string            `yaml:"log_group_name"`
 	Pipeline             []Step            `yaml:"pipeline"`
@@ -26,19 +27,21 @@ type Environment struct {
 
 // Config represents all options that can be configured by a flecs config file
 type Config struct {
-	AssignPublicIP       bool                   `yaml:"public_ip"`
-	ClusterName          string                 `yaml:"cluster_name"`
-	Definitions          map[string]Definition  `yaml:"definitions"`
-	EnvironmentVariables map[string]string      `yaml:"environment_variables"`
-	Environments         map[string]Environment `yaml:"environments"`
-	LogGroupName         string                 `yaml:"log_group_name"`
-	Pipeline             []Step                 `yaml:"pipeline"`
-	ProjectName          string                 `yaml:"project_name"`
-	Region               string                 `yaml:"region"`
-	Secrets              map[string]string      `yaml:"secrets"`
-	SecurityGroupNames   []string               `yaml:"security_group_names"`
-	Services             map[string]Service     `yaml:"services"`
-	SubnetNames          []string               `yaml:"subnet_names"`
+	AssignPublicIP       bool              `yaml:"public_ip"`
+	ClusterName          string            `yaml:"cluster_name"`
+	ECRRegion            string            `yaml:"ecr_region"`
+	EnvironmentVariables map[string]string `yaml:"environment_variables"`
+	LogGroupName         string            `yaml:"log_group_name"`
+	Region               string            `yaml:"region"`
+	Secrets              map[string]string `yaml:"secrets"`
+	SecurityGroupNames   []string          `yaml:"security_group_names"`
+	SubnetNames          []string          `yaml:"subnet_names"`
+
+	Definitions  map[string]Definition  `yaml:"definitions"`
+	Environments map[string]Environment `yaml:"environments"`
+	Pipeline     []Step                 `yaml:"pipeline"`
+	ProjectName  string                 `yaml:"project_name"`
+	Services     map[string]Service     `yaml:"services"`
 
 	EnvironmentName string
 	Tag             string
@@ -149,6 +152,15 @@ func LoadConfig() (config Config, err error) {
 	// Check and set LogGroupName
 	if config.LogGroupName == "" && envConfig.LogGroupName != "" {
 		config.LogGroupName = envConfig.LogGroupName
+	}
+
+	// Check and set ECR region
+	if envConfig.ECRRegion != "" {
+		config.ECRRegion = envConfig.ECRRegion
+	}
+
+	if config.ECRRegion == "" && envConfig.ECRRegion == "" {
+		config.ECRRegion = config.Region
 	}
 
 	// Check and set Pipeline
