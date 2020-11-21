@@ -6,14 +6,27 @@ import (
 
 // Deploy runs through the pipeline and performs each task
 func (config Config) Deploy() (err error) {
-	for _, step := range config.Pipeline {
+	for i, step := range config.Pipeline {
 		Log.Info("Step: ", step.Type)
 
 		switch step.Type {
 		case "task":
-			Log.Info("Name: ", step.Task.Name)
+			Log.Infof("[%d] ==> task", i+1)
+			if step.Task.Name != "" {
+				Log.Info("Name: ", step.Task.Name)
+			}
+
+			client := Client{Region: config.Region}
+			_, err = step.Task.Run(client, config)
+			if err != nil {
+				return err
+			}
+
 		case "service":
-			Log.Info("Name: ", step.Service.Name)
+			Log.Infof("[%d] ==> service", i+1)
+			if step.Service.Name != "" {
+				Log.Info("Name: ", step.Service.Name)
+			}
 
 			service, ok := config.Services[step.Service.Service]
 			if !ok {
@@ -31,13 +44,22 @@ func (config Config) Deploy() (err error) {
 			Log.Infof("Configured service %s", serviceName)
 
 		case "script":
-			Log.Info("Name: ", step.Script.Name)
+			Log.Infof("[%d] ==> script", i+1)
+			if step.Script.Name != "" {
+				Log.Info("Name: ", step.Script.Name)
+			}
+
 			_, err = step.Script.Run()
 			if err != nil {
 				return err
 			}
+
 		case "docker":
-			Log.Infof("Name: %s", step.Docker.Name)
+			Log.Infof("[%d] ==> docker", i+1)
+			if step.Docker.Name != "" {
+				Log.Infof("Name: %s", step.Docker.Name)
+			}
+
 			client := Client{Region: config.Region}
 			err = step.Docker.Run(client, config)
 			if err != nil {
