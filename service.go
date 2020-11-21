@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/dchest/uniuri"
 )
@@ -118,29 +117,9 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		return serviceName, err
 	}
 
-	// Get security group IDs
-	securityGroupIDs, err := clients.getSecurityGroupIDs(cfg.SecurityGroupNames)
+	networkConfiguration, err := clients.NetworkConfiguration(cfg)
 	if err != nil {
 		return serviceName, err
-	}
-
-	assignPublicIP := cfg.AssignPublicIP
-
-	// Get subnet IDs
-	subnetIDs, err := clients.getSubnetIDs(cfg.SubnetNames)
-	if err != nil {
-		return serviceName, err
-	}
-
-	// Use default VPC subnets if no subnets configured
-	if len(subnetIDs) == 0 {
-		subnetIDs, err = clients.getDefaultSubnetIDs()
-		if err != nil {
-			return serviceName, err
-		}
-
-		// Always assign a public IP for default subnets
-		assignPublicIP = true
 	}
 
 	// Register task definition
@@ -160,21 +139,12 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 
 	// Create service
 	createServiceInput := ecs.CreateServiceInput{
-		Cluster:      aws.String(cfg.ClusterName),
-		DesiredCount: aws.Int64(1),
-		LaunchType:   aws.String(s.LaunchType),
-		NetworkConfiguration: &ecs.NetworkConfiguration{
-			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
-				SecurityGroups: aws.StringSlice(securityGroupIDs),
-				Subnets:        aws.StringSlice(subnetIDs),
-			},
-		},
-		ServiceName:    aws.String(serviceName),
-		TaskDefinition: aws.String(taskDefinitionArn),
-	}
-
-	if assignPublicIP {
-		createServiceInput.NetworkConfiguration.AwsvpcConfiguration.SetAssignPublicIp("ENABLED")
+		Cluster:              aws.String(cfg.ClusterName),
+		DesiredCount:         aws.Int64(1),
+		LaunchType:           aws.String(s.LaunchType),
+		NetworkConfiguration: &networkConfiguration,
+		ServiceName:          aws.String(serviceName),
+		TaskDefinition:       aws.String(taskDefinitionArn),
 	}
 
 	if s.LoadBalancer != (LoadBalancer{}) {
@@ -299,70 +269,6 @@ func (s Service) checkServiceExists(c Clients, cfg Config, serviceNamePrefix str
 	}
 
 	return serviceName, err
-}
-
-func (c Clients) getSecurityGroupIDs(names []string) (ids []string, err error) {
-	input := ec2.DescribeSecurityGroupsInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("group-name"),
-				Values: aws.StringSlice(names),
-			},
-		},
-	}
-
-	result, err := c.EC2.DescribeSecurityGroups(&input)
-	if err != nil {
-		return ids, err
-	}
-
-	for _, g := range result.SecurityGroups {
-		ids = append(ids, aws.StringValue(g.GroupId))
-	}
-
-	return ids, err
-}
-
-func (c Clients) getSubnetIDs(names []string) (ids []string, err error) {
-	input := ec2.DescribeSubnetsInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("tag:Name"),
-				Values: aws.StringSlice(names),
-			},
-		},
-	}
-
-	result, err := c.EC2.DescribeSubnets(&input)
-	if err != nil {
-		return ids, err
-	}
-
-	for _, s := range result.Subnets {
-		ids = append(ids, aws.StringValue(s.SubnetId))
-	}
-
-	return ids, err
-}
-
-func (c Clients) getDefaultSubnetIDs() (ids []string, err error) {
-	result, err := c.EC2.DescribeSubnets(&ec2.DescribeSubnetsInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("default-for-az"),
-				Values: aws.StringSlice([]string{"true"}),
-			},
-		},
-	})
-	if err != nil {
-		return ids, err
-	}
-
-	for _, s := range result.Subnets {
-		ids = append(ids, aws.StringValue(s.SubnetId))
-	}
-
-	return ids, err
 }
 
 func (s Service) serviceNamePrefix(cfg Config) (serviceNamePrefix string) {
