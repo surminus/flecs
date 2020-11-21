@@ -51,7 +51,8 @@ var cmd = &cobra.Command{
 
 // deploy is used for running through the pipeline from start to finish
 var deploy = &cobra.Command{
-	Use: "deploy",
+	Use:   "deploy",
+	Short: "Run through the configured pipeline",
 	Run: func(cmd *cobra.Command, args []string) {
 		Log.Info("START")
 
@@ -68,8 +69,9 @@ var deploy = &cobra.Command{
 
 // rm is used for deleting resources
 var rm = &cobra.Command{
-	Use:  "rm",
-	Args: cobra.ExactArgs(2),
+	Use:   "rm [resource] [name]",
+	Short: "Run through the configured pipeline",
+	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		// Each other function should accept the config type
 		config, err := LoadConfig()
