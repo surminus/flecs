@@ -71,7 +71,7 @@ var deploy = &cobra.Command{
 var rm = &cobra.Command{
 	Use:   "rm [resource] [name]",
 	Short: "Run through the configured pipeline",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		// Each other function should accept the config type
 		config, err := LoadConfig()
@@ -79,7 +79,18 @@ var rm = &cobra.Command{
 
 		switch args[0] {
 		case "service":
+			if len(args) < 2 {
+				Log.Fatal("Must specify service name")
+			}
+
 			err = config.Remove("service", args[1])
+			CheckError(err)
+		case "cluster":
+			if len(args) > 1 {
+				Log.Fatal("Deleting cluster does not take any arguments. Use --environment to choose different clusters.")
+			}
+
+			err = config.Remove("cluster", "")
 			CheckError(err)
 		default:
 			Log.Fatalf("Unrecognised resource %s", args[0])

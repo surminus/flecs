@@ -91,6 +91,16 @@ func (config Config) Remove(resource, name string) (err error) {
 		}
 
 		Log.Infof("Deleted service %s", serviceName)
+
+	case "cluster":
+		client := Client{Region: config.Region}
+		// Set up ECS client
+		clients, err := client.InitClients()
+		if err != nil {
+			return err
+		}
+
+		clients.DeleteCluster(config)
 	}
 
 	return err
