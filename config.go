@@ -155,6 +155,11 @@ func LoadConfig() (config Config, err error) {
 		config.LogGroupName = envConfig.LogGroupName
 	}
 
+	if config.LogGroupName == "" {
+		// Set a default log group name if not specified
+		config.LogGroupName = fmt.Sprintf("/flecs/%s", config.ProjectName)
+	}
+
 	// Check and set ECR region
 	if envConfig.ECRRegion != "" {
 		config.ECRRegion = envConfig.ECRRegion

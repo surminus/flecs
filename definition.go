@@ -104,18 +104,13 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 		family = strings.Join([]string{family, cfg.EnvironmentName}, "-")
 	}
 
-	logGroupName := cfg.LogGroupName
-	if logGroupName == "" {
-		defaultLogGroupName := fmt.Sprintf("/flecs/%s", cfg.ProjectName)
-		err = d.createDefaultLogGroup(clients, defaultLogGroupName)
-		if err != nil {
-			return arn, err
-		}
-		logGroupName = defaultLogGroupName
+	err = d.createLogGroup(clients, cfg.LogGroupName)
+	if err != nil {
+		return arn, err
 	}
 
 	// Configure container definitions
-	containerDefinitions, err := d.generateContainerDefinitions(cfg, name, logGroupName)
+	containerDefinitions, err := d.generateContainerDefinitions(cfg, name, cfg.LogGroupName)
 	if err != nil {
 		return arn, err
 	}
@@ -341,7 +336,8 @@ func (d Definition) createDefaultExecutionRole(c Clients) (roleArn string, err e
 	return aws.StringValue(createRoleOutput.Role.Arn), err
 }
 
-func (d Definition) createDefaultLogGroup(c Clients, logGroupName string) (err error) {
+// createLogGroup only creates the log group if it doesn't already exist
+func (d Definition) createLogGroup(c Clients, logGroupName string) (err error) {
 	client := c.CloudWatchLogs
 
 	describeLogGroupsInput := cloudwatchlogs.DescribeLogGroupsInput{

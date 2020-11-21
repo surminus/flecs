@@ -106,7 +106,6 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		if !clusterCreated {
 			Log.Fatal("Failed to create cluster!")
 		}
-
 	}
 
 	serviceNamePrefix := s.serviceNamePrefix(cfg)
