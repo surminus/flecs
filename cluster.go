@@ -11,7 +11,7 @@ import (
 // ClusterExists returns true if the cluster exists
 func (c Clients) ClusterExists(cfg Config) (result bool, err error) {
 	describeClusterInput := ecs.DescribeClustersInput{
-		Clusters: aws.StringSlice([]string{cfg.ClusterName}),
+		Clusters: aws.StringSlice([]string{cfg.Options.ClusterName}),
 	}
 	describeCluster, err := c.ECS.DescribeClusters(&describeClusterInput)
 	if err != nil {
@@ -29,10 +29,10 @@ func (c Clients) ClusterExists(cfg Config) (result bool, err error) {
 
 // CreateCluster creates a new cluster
 func (c Clients) CreateCluster(cfg Config) (err error) {
-	Log.Infof("Creating cluster %s", cfg.ClusterName)
+	Log.Infof("Creating cluster %s", cfg.Options.ClusterName)
 
 	createClusterInput := ecs.CreateClusterInput{
-		ClusterName: aws.String(cfg.ClusterName),
+		ClusterName: aws.String(cfg.Options.ClusterName),
 	}
 	_, err = c.ECS.CreateCluster(&createClusterInput)
 	if err != nil {
@@ -45,7 +45,7 @@ func (c Clients) CreateCluster(cfg Config) (err error) {
 		time.Sleep(10 * time.Second)
 
 		describeClusterInput := ecs.DescribeClustersInput{
-			Clusters: aws.StringSlice([]string{cfg.ClusterName}),
+			Clusters: aws.StringSlice([]string{cfg.Options.ClusterName}),
 		}
 		describeCluster, err := c.ECS.DescribeClusters(&describeClusterInput)
 		if err != nil {
@@ -71,17 +71,17 @@ func (c Clients) CreateCluster(cfg Config) (err error) {
 }
 
 func (c Clients) DeleteCluster(cfg Config) (err error) {
-	Log.Infof("Deleting cluster %s", cfg.ClusterName)
+	Log.Infof("Deleting cluster %s", cfg.Options.ClusterName)
 
 	deleteClusterInput := ecs.DeleteClusterInput{
-		Cluster: aws.String(cfg.ClusterName),
+		Cluster: aws.String(cfg.Options.ClusterName),
 	}
 	_, err = c.ECS.DeleteCluster(&deleteClusterInput)
 	if err != nil {
 		return err
 	}
 
-	Log.Infof("Cluster %s deleted", cfg.ClusterName)
+	Log.Infof("Cluster %s deleted", cfg.Options.ClusterName)
 
 	return err
 }

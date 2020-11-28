@@ -46,7 +46,7 @@ func (d DockerStep) Run(c Client, cfg Config) (err error) {
 		return err
 	}
 
-	registryURI := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", aws.StringValue(gci.Account), cfg.ECRRegion)
+	registryURI := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", aws.StringValue(gci.Account), cfg.Options.ECRRegion)
 	imageName := fmt.Sprintf("%s/%s", registryURI, repository)
 	imageNameWithTag := fmt.Sprintf("%s:%s", imageName, cfg.Tag)
 

@@ -16,7 +16,7 @@ func (config Config) Deploy() (err error) {
 				Log.Info("Name: ", step.Task.Name)
 			}
 
-			client := Client{Region: config.Region}
+			client := Client{Region: config.Options.Region}
 			_, err = step.Task.Run(client, config)
 			if err != nil {
 				return err
@@ -35,7 +35,7 @@ func (config Config) Deploy() (err error) {
 
 			service.Name = step.Service.Service
 
-			client := Client{Region: config.Region}
+			client := Client{Region: config.Options.Region}
 			serviceName, err := service.Create(client, config)
 			if err != nil {
 				return err
@@ -60,7 +60,7 @@ func (config Config) Deploy() (err error) {
 				Log.Infof("Name: %s", step.Docker.Name)
 			}
 
-			client := Client{Region: config.Region}
+			client := Client{Region: config.Options.Region}
 			err = step.Docker.Run(client, config)
 			if err != nil {
 				return err
@@ -84,7 +84,7 @@ func (config Config) Remove(resource, name string) (err error) {
 
 		service.Name = name
 
-		client := Client{Region: config.Region}
+		client := Client{Region: config.Options.Region}
 		serviceName, err := service.Destroy(client, config)
 		if err != nil {
 			return err
@@ -93,7 +93,7 @@ func (config Config) Remove(resource, name string) (err error) {
 		Log.Infof("Deleted service %s", serviceName)
 
 	case "cluster":
-		client := Client{Region: config.Region}
+		client := Client{Region: config.Options.Region}
 		// Set up ECS client
 		clients, err := client.InitClients()
 		if err != nil {

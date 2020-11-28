@@ -104,13 +104,13 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 		family = strings.Join([]string{family, cfg.EnvironmentName}, "-")
 	}
 
-	err = d.createLogGroup(clients, cfg.LogGroupName)
+	err = d.createLogGroup(clients, cfg.Options.LogGroupName)
 	if err != nil {
 		return arn, err
 	}
 
 	// Configure container definitions
-	containerDefinitions, err := d.generateContainerDefinitions(cfg, name, cfg.LogGroupName)
+	containerDefinitions, err := d.generateContainerDefinitions(cfg, name, cfg.Options.LogGroupName)
 	if err != nil {
 		return arn, err
 	}
@@ -172,7 +172,7 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, logGroupName string) (def []*ecs.ContainerDefinition, err error) {
 	// Secrets
 	var secrets []*ecs.Secret
-	for name, valueFrom := range cfg.Secrets {
+	for name, valueFrom := range cfg.Options.Secrets {
 		secrets = append(secrets, &ecs.Secret{
 			Name:      aws.String(name),
 			ValueFrom: aws.String(valueFrom),
@@ -181,7 +181,7 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 
 	// Environment variables
 	var environmentVariables []*ecs.KeyValuePair
-	for name, value := range cfg.EnvironmentVariables {
+	for name, value := range cfg.Options.EnvironmentVariables {
 		environmentVariables = append(environmentVariables, &ecs.KeyValuePair{
 			Name:  aws.String(name),
 			Value: aws.String(value),
@@ -192,7 +192,7 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 	logConfiguration := ecs.LogConfiguration{
 		LogDriver: aws.String("awslogs"),
 		Options: aws.StringMap(map[string]string{
-			"awslogs-region":        cfg.Region,
+			"awslogs-region":        cfg.Options.Region,
 			"awslogs-stream-prefix": logStreamPrefix,
 			"awslogs-group":         logGroupName,
 		}),

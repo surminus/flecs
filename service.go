@@ -34,6 +34,10 @@ type LoadBalancer struct {
 	ContainerPort  int64  `yaml:"container_port"`
 }
 
+func (s ServiceStep) Run(c Client, cfg Config) (err error) {
+	return err
+}
+
 // Create creates a service if it doesn't exist, and returns the name of the
 // service
 func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
@@ -89,7 +93,7 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 
 	// Create service
 	createServiceInput := ecs.CreateServiceInput{
-		Cluster:              aws.String(cfg.ClusterName),
+		Cluster:              aws.String(cfg.Options.ClusterName),
 		DesiredCount:         aws.Int64(1),
 		LaunchType:           aws.String(s.LaunchType),
 		NetworkConfiguration: &networkConfiguration,
@@ -118,18 +122,13 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 
 	// Wait for service to become stable
 	err = clientECS.WaitUntilServicesStable(&ecs.DescribeServicesInput{
-		Cluster:  aws.String(cfg.ClusterName),
+		Cluster:  aws.String(cfg.Options.ClusterName),
 		Services: aws.StringSlice([]string{aws.StringValue(output.Service.ServiceName)}),
 	})
 	if err != nil {
 		return serviceName, err
 	}
 
-	return serviceName, err
-}
-
-// Update updates a service that already exists
-func (s Service) Update() (serviceName string, err error) {
 	return serviceName, err
 }
 
@@ -150,7 +149,7 @@ func (s Service) Destroy(c Client, cfg Config) (serviceName string, err error) {
 	}
 
 	deleteServiceInput := ecs.DeleteServiceInput{
-		Cluster: aws.String(cfg.ClusterName),
+		Cluster: aws.String(cfg.Options.ClusterName),
 		Force:   aws.Bool(true),
 		Service: aws.String(serviceName),
 	}
@@ -183,7 +182,7 @@ func (s Service) checkServiceExists(c Clients, cfg Config, serviceNamePrefix str
 
 	// Check if service already exists, if so, return early with the name
 	listServiceInput := ecs.ListServicesInput{
-		Cluster:    aws.String(cfg.ClusterName),
+		Cluster:    aws.String(cfg.Options.ClusterName),
 		LaunchType: aws.String(s.LaunchType),
 		MaxResults: aws.Int64(100),
 	}

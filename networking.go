@@ -75,15 +75,15 @@ func (c Clients) GetDefaultSubnetIDs() (ids []string, err error) {
 
 func (c Clients) NetworkConfiguration(cfg Config) (out ecs.NetworkConfiguration, err error) {
 	// Get security group IDs
-	securityGroupIDs, err := c.GetSecurityGroupIDs(cfg.SecurityGroupNames)
+	securityGroupIDs, err := c.GetSecurityGroupIDs(cfg.Options.SecurityGroupNames)
 	if err != nil {
 		return out, err
 	}
 
-	assignPublicIP := cfg.AssignPublicIP
+	assignPublicIP := cfg.Options.AssignPublicIP
 
 	// Get subnet IDs
-	subnetIDs, err := c.GetSubnetIDs(cfg.SubnetNames)
+	subnetIDs, err := c.GetSubnetIDs(cfg.Options.SubnetNames)
 	if err != nil {
 		return out, err
 	}

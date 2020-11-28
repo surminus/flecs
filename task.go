@@ -71,7 +71,7 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 	Log.Infof("Registered task definition %s", taskDefinitionArn)
 
 	runTaskInput := ecs.RunTaskInput{
-		Cluster:              aws.String(cfg.ClusterName),
+		Cluster:              aws.String(cfg.Options.ClusterName),
 		LaunchType:           aws.String(t.LaunchType),
 		NetworkConfiguration: &networkConfiguration,
 		TaskDefinition:       aws.String(taskDefinitionArn),
@@ -111,7 +111,7 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 
 	Log.Infof("Waiting for task to finish: %s", taskArn)
 	describeTasksInput := ecs.DescribeTasksInput{
-		Cluster: aws.String(cfg.ClusterName),
+		Cluster: aws.String(cfg.Options.ClusterName),
 		Tasks:   aws.StringSlice([]string{taskArn}),
 	}
 	err = clients.ECS.WaitUntilTasksStopped(&describeTasksInput)
@@ -152,7 +152,7 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 		}
 
 		getLogEventsInput := cloudwatchlogs.GetLogEventsInput{
-			LogGroupName:  aws.String(cfg.LogGroupName),
+			LogGroupName:  aws.String(cfg.Options.LogGroupName),
 			LogStreamName: aws.String(logStreamName),
 		}
 		events, err := clients.CloudWatchLogs.GetLogEvents(&getLogEventsInput)
@@ -200,7 +200,7 @@ func (t TaskStep) taskIDfromARN(taskArn string) (taskID string) {
 func (t TaskStep) waitForLogStream(c Clients, cfg Config, logStreamName string) (logStream cloudwatchlogs.LogStream, err error) {
 	for count := 0; count < 30; count++ {
 		resp, err := c.CloudWatchLogs.DescribeLogStreams(&cloudwatchlogs.DescribeLogStreamsInput{
-			LogGroupName:        aws.String(cfg.LogGroupName),
+			LogGroupName:        aws.String(cfg.Options.LogGroupName),
 			LogStreamNamePrefix: aws.String(logStreamName),
 		})
 		if err != nil {
@@ -216,5 +216,5 @@ func (t TaskStep) waitForLogStream(c Clients, cfg Config, logStreamName string) 
 		time.Sleep(5 * time.Second)
 	}
 
-	return logStream, fmt.Errorf("Timed out waiting for log stream: %s/%s", cfg.LogGroupName, logStreamName)
+	return logStream, fmt.Errorf("Timed out waiting for log stream: %s/%s", cfg.Options.LogGroupName, logStreamName)
 }
