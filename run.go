@@ -7,11 +7,9 @@ import (
 // Deploy runs through the pipeline and performs each task
 func (config Config) Deploy() (err error) {
 	for i, step := range config.Pipeline {
-		Log.Info("Step: ", step.Type)
-
 		switch step.Type {
 		case "task":
-			Log.Infof("[%d] ==> task", i+1)
+			Log.Infof("[step %d] ==> task", i+1)
 			if step.Task.Name != "" {
 				Log.Info("Name: ", step.Task.Name)
 			}
@@ -23,7 +21,7 @@ func (config Config) Deploy() (err error) {
 			}
 
 		case "service":
-			Log.Infof("[%d] ==> service", i+1)
+			Log.Infof("[step %d] ==> service", i+1)
 			if step.Service.Name != "" {
 				Log.Info("Name: ", step.Service.Name)
 			}
@@ -44,7 +42,7 @@ func (config Config) Deploy() (err error) {
 			Log.Infof("Configured service %s", serviceName)
 
 		case "script":
-			Log.Infof("[%d] ==> script", i+1)
+			Log.Infof("[step %d] ==> script", i+1)
 			if step.Script.Name != "" {
 				Log.Info("Name: ", step.Script.Name)
 			}
@@ -55,7 +53,7 @@ func (config Config) Deploy() (err error) {
 			}
 
 		case "docker":
-			Log.Infof("[%d] ==> docker", i+1)
+			Log.Infof("[step %d] ==> docker", i+1)
 			if step.Docker.Name != "" {
 				Log.Infof("Name: %s", step.Docker.Name)
 			}
