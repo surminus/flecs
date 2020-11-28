@@ -34,8 +34,53 @@ type LoadBalancer struct {
 	ContainerPort  int64  `yaml:"container_port"`
 }
 
-func (s ServiceStep) Run(c Client, cfg Config) (err error) {
-	return err
+// Run runs the service step
+func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
+	// Set up ECS client
+	clients, err := c.InitClients()
+	if err != nil {
+		return serviceName, err
+	}
+
+	service, ok := cfg.Services[s.Service]
+	if !ok {
+		return serviceName, fmt.Errorf("cannot find service configured called %s", s.Service)
+	}
+
+	service.Name = s.Service
+
+	// Check if the service already exists
+	serviceNamePrefix := service.serviceNamePrefix(cfg)
+	serviceName, err = service.checkServiceExists(clients, cfg, serviceNamePrefix)
+	if err != nil {
+		return serviceName, err
+	}
+
+	// Update the service
+	if serviceName != "" {
+		serviceName, err = service.Update(c, cfg)
+		if err != nil {
+			return serviceName, err
+		}
+
+		Log.Infof("Updated service %s", serviceName)
+		return serviceName, err
+	}
+
+	// Otherwise create the service
+	serviceName, err = service.Create(c, cfg)
+	if err != nil {
+		return serviceName, err
+	}
+
+	Log.Infof("Created service %s", serviceName)
+
+	return serviceName, err
+}
+
+// Update updates a running service
+func (s Service) Update(c Client, cfg Config) (serviceName string, err error) {
+	return serviceName, err
 }
 
 // Create creates a service if it doesn't exist, and returns the name of the
@@ -49,6 +94,10 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 
 	clientECS := clients.ECS
 
+	// serviceNamePrefix ensures that services have unique IDs, which will
+	// eventually be used when we have to safely recreate a service
+	serviceNamePrefix := s.serviceNamePrefix(cfg)
+
 	// Check if the cluster exists
 	clusterExists, err := clients.ClusterExists(cfg)
 	if err != nil {
@@ -61,14 +110,6 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 		if err != nil {
 			return serviceName, err
 		}
-	}
-
-	serviceNamePrefix := s.serviceNamePrefix(cfg)
-
-	// Check if the service already exists
-	serviceName, err = s.checkServiceExists(clients, cfg, serviceNamePrefix)
-	if err != nil || serviceName != "" {
-		return serviceName, err
 	}
 
 	networkConfiguration, err := clients.NetworkConfiguration(cfg)

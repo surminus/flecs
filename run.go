@@ -26,20 +26,11 @@ func (config Config) Deploy() (err error) {
 				Log.Info("Name: ", step.Service.Name)
 			}
 
-			service, ok := config.Services[step.Service.Service]
-			if !ok {
-				return fmt.Errorf("cannot find service configured called %s", step.Service.Service)
-			}
-
-			service.Name = step.Service.Service
-
 			client := Client{Region: config.Options.Region}
-			serviceName, err := service.Create(client, config)
+			_, err = step.Service.Run(client, config)
 			if err != nil {
 				return err
 			}
-
-			Log.Infof("Configured service %s", serviceName)
 
 		case "script":
 			Log.Infof("[step %d] ==> script", i+1)
