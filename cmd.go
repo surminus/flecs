@@ -9,21 +9,16 @@ var (
 	cfgFile string
 )
 
-// Execute executes the root command
-func Execute() error {
-	return cmd.Execute()
-}
-
 func init() {
 	cobra.OnInitialize(initConfig)
 
 	cmd.PersistentFlags().StringVarP(&cfgFile, "file", "f", "", "Path to config file")
 
 	cmd.PersistentFlags().StringP("environment", "e", "", "An environment (or stage) to deploy to")
-	viper.BindPFlag("environment", cmd.PersistentFlags().Lookup("environment"))
+	CheckError(viper.BindPFlag("environment", cmd.PersistentFlags().Lookup("environment")))
 
 	cmd.PersistentFlags().StringP("tag", "t", "", "The tag is used by images")
-	viper.BindPFlag("tag", cmd.PersistentFlags().Lookup("tag"))
+	CheckError(viper.BindPFlag("tag", cmd.PersistentFlags().Lookup("tag")))
 
 	cmd.AddCommand(deploy, rm)
 }

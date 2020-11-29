@@ -58,7 +58,10 @@ func LoadConfig() (config Config, err error) {
 		return config, err
 	}
 
-	yaml.Unmarshal(file, &config)
+	err = yaml.Unmarshal(file, &config)
+	if err != nil {
+		return config, err
+	}
 
 	// Configure default options
 	if viper.GetString("environment") != "" {
