@@ -79,7 +79,13 @@ func (config Config) Remove(resource, name string) (err error) {
 
 		service.Name = name
 
-		serviceName, err := service.Destroy(clients, config)
+		serviceNamePrefix := service.serviceNamePrefix(config)
+		serviceName, err := service.checkServicePrefixExists(clients, config, serviceNamePrefix)
+		if err != nil {
+			return err
+		}
+
+		err = service.Delete(clients, config, serviceName)
 		if err != nil {
 			return err
 		}

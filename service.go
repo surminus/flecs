@@ -66,10 +66,32 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 	// If the cluster exists, check if the service exists
 	if clusterExists {
 		serviceNamePrefix := service.serviceNamePrefix(cfg)
-		serviceName, err = service.checkServiceExists(clients, cfg, serviceNamePrefix)
+		serviceName, err = service.checkServicePrefixExists(clients, cfg, serviceNamePrefix)
 		if err != nil {
 			return serviceName, err
 		}
+	}
+
+	// If the service exists, and we want to recreate, then we have to create
+	// a new service, then delete the old service
+	if serviceName != "" && cfg.RecreateServices {
+		Log.Infof("Re-creating service %s", serviceName)
+		newServiceName, err := service.Create(clients, cfg)
+		if err != nil {
+			return newServiceName, err
+		}
+
+		Log.Infof("Created replacement service %s", newServiceName)
+
+		oldServiceName := serviceName
+		Log.Infof("Deleting old service %s", oldServiceName)
+		err = service.Delete(clients, cfg, oldServiceName)
+		if err != nil {
+			return newServiceName, err
+		}
+		Log.Infof("Deleted old service %s", oldServiceName)
+
+		return newServiceName, err
 	}
 
 	// Update the service if it already exists
@@ -214,46 +236,54 @@ func (s Service) Create(c Clients, cfg Config) (serviceName string, err error) {
 	return serviceName, err
 }
 
-// Destroy deletes a service (but not created log groups, clusters or roles)
-func (s Service) Destroy(c Clients, cfg Config) (serviceName string, err error) {
+// Delete deletes a service (but not created log groups, clusters or roles)
+func (s Service) Delete(c Clients, cfg Config, service string) (err error) {
 	clientECS := c.ECS
-
-	// Check if the service already exists
-	serviceName, err = s.checkServiceExists(c, cfg, s.serviceNamePrefix(cfg))
-	if err != nil || serviceName == "" {
-		return serviceName, err
-	}
 
 	deleteServiceInput := ecs.DeleteServiceInput{
 		Cluster: aws.String(cfg.Options.ClusterName),
 		Force:   aws.Bool(true),
-		Service: aws.String(serviceName),
+		Service: aws.String(service),
 	}
 
-	Log.Info("Deleting service")
 	_, err = clientECS.DeleteService(&deleteServiceInput)
 	if err != nil {
-		return serviceName, err
+		return err
 	}
 
 	for count := 0; count < 30; count++ {
-		serviceName, err = s.checkServiceExists(c, cfg, s.serviceNamePrefix(cfg))
+		serviceExists, err := s.checkServiceExists(c, cfg, service)
 		if err != nil {
-			return serviceName, err
+			return err
 		}
 
-		if serviceName == "" {
+		if serviceExists {
 			break
 		}
 
-		Log.Info("Waiting for service to terminate")
+		Log.Infof("Waiting for service %s to terminate", service)
 		time.Sleep(10 * time.Second)
 	}
 
-	return serviceName, err
+	return err
 }
 
-func (s Service) checkServiceExists(c Clients, cfg Config, serviceNamePrefix string) (serviceName string, err error) {
+func (s Service) checkServiceExists(c Clients, cfg Config, service string) (result bool, err error) {
+	input := ecs.DescribeServicesInput{
+		Cluster:  aws.String(cfg.Options.ClusterName),
+		Services: []*string{aws.String(service)},
+	}
+
+	resp, err := c.ECS.DescribeServices(&input)
+	if err != nil {
+		return result, err
+	}
+
+	result = len(resp.Services) > 0
+	return result, err
+}
+
+func (s Service) checkServicePrefixExists(c Clients, cfg Config, serviceNamePrefix string) (serviceName string, err error) {
 	client := c.ECS
 
 	// Check if service already exists, if so, return early with the name
