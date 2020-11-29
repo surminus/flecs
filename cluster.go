@@ -64,7 +64,7 @@ func (c Clients) CreateCluster(cfg Config) (err error) {
 	}
 
 	if !clusterCreated {
-		return fmt.Errorf("Failed to create cluster!")
+		return fmt.Errorf("failed to create cluster")
 	}
 
 	// Wait 5 seconds for luck
@@ -73,6 +73,7 @@ func (c Clients) CreateCluster(cfg Config) (err error) {
 	return err
 }
 
+// DeleteCluster deletes a cluster
 func (c Clients) DeleteCluster(cfg Config) (err error) {
 	Log.Infof("Deleting cluster %s", cfg.Options.ClusterName)
 
