@@ -64,6 +64,12 @@ func (config Config) Deploy() (err error) {
 
 // Remove deletes a resource
 func (config Config) Remove(resource, name string) (err error) {
+	c := Client{Region: config.Options.Region}
+	clients, err := c.InitClients()
+	if err != nil {
+		return err
+	}
+
 	switch resource {
 	case "service":
 		service, ok := config.Services[name]
@@ -73,8 +79,7 @@ func (config Config) Remove(resource, name string) (err error) {
 
 		service.Name = name
 
-		client := Client{Region: config.Options.Region}
-		serviceName, err := service.Destroy(client, config)
+		serviceName, err := service.Destroy(clients, config)
 		if err != nil {
 			return err
 		}
@@ -82,13 +87,6 @@ func (config Config) Remove(resource, name string) (err error) {
 		Log.Infof("Deleted service %s", serviceName)
 
 	case "cluster":
-		client := Client{Region: config.Options.Region}
-		// Set up ECS client
-		clients, err := client.InitClients()
-		if err != nil {
-			return err
-		}
-
 		clients.DeleteCluster(config)
 	}
 

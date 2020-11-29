@@ -58,7 +58,7 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 
 	// Update the service
 	if serviceName != "" {
-		serviceName, err = service.Update(c, cfg)
+		serviceName, err = service.Update(clients, cfg, serviceName)
 		if err != nil {
 			return serviceName, err
 		}
@@ -68,7 +68,7 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 	}
 
 	// Otherwise create the service
-	serviceName, err = service.Create(c, cfg)
+	serviceName, err = service.Create(clients, cfg)
 	if err != nil {
 		return serviceName, err
 	}
@@ -79,40 +79,34 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 }
 
 // Update updates a running service
-func (s Service) Update(c Client, cfg Config) (serviceName string, err error) {
+func (s Service) Update(c Clients, cfg Config, service string) (serviceName string, err error) {
 	return serviceName, err
 }
 
 // Create creates a service if it doesn't exist, and returns the name of the
 // service
-func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
-	// Set up ECS client
-	clients, err := c.InitClients()
-	if err != nil {
-		return serviceName, err
-	}
-
-	clientECS := clients.ECS
+func (s Service) Create(c Clients, cfg Config) (serviceName string, err error) {
+	clientECS := c.ECS
 
 	// serviceNamePrefix ensures that services have unique IDs, which will
 	// eventually be used when we have to safely recreate a service
 	serviceNamePrefix := s.serviceNamePrefix(cfg)
 
 	// Check if the cluster exists
-	clusterExists, err := clients.ClusterExists(cfg)
+	clusterExists, err := c.ClusterExists(cfg)
 	if err != nil {
 		return serviceName, err
 	}
 
 	// Create a default cluster if it doesn't
 	if !clusterExists {
-		err = clients.CreateCluster(cfg)
+		err = c.CreateCluster(cfg)
 		if err != nil {
 			return serviceName, err
 		}
 	}
 
-	networkConfiguration, err := clients.NetworkConfiguration(cfg)
+	networkConfiguration, err := c.NetworkConfiguration(cfg)
 	if err != nil {
 		return serviceName, err
 	}
@@ -174,17 +168,11 @@ func (s Service) Create(c Client, cfg Config) (serviceName string, err error) {
 }
 
 // Delete a service (but not created log groups, clusters or roles)
-func (s Service) Destroy(c Client, cfg Config) (serviceName string, err error) {
-	// Set up ECS client
-	clients, err := c.InitClients()
-	if err != nil {
-		return serviceName, err
-	}
-
-	clientECS := clients.ECS
+func (s Service) Destroy(c Clients, cfg Config) (serviceName string, err error) {
+	clientECS := c.ECS
 
 	// Check if the service already exists
-	serviceName, err = s.checkServiceExists(clients, cfg, s.serviceNamePrefix(cfg))
+	serviceName, err = s.checkServiceExists(c, cfg, s.serviceNamePrefix(cfg))
 	if err != nil || serviceName == "" {
 		return serviceName, err
 	}
@@ -202,7 +190,7 @@ func (s Service) Destroy(c Client, cfg Config) (serviceName string, err error) {
 	}
 
 	for count := 0; count < 30; count++ {
-		serviceName, err = s.checkServiceExists(clients, cfg, s.serviceNamePrefix(cfg))
+		serviceName, err = s.checkServiceExists(c, cfg, s.serviceNamePrefix(cfg))
 		if err != nil {
 			return serviceName, err
 		}

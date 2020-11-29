@@ -64,7 +64,7 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 		taskName = fmt.Sprintf("%s-%s", taskName, name)
 	}
 
-	taskDefinitionArn, err := definition.Create(c, cfg, taskName)
+	taskDefinitionArn, err := definition.Create(clients, cfg, taskName)
 	if err != nil {
 		return taskArn, err
 	}
