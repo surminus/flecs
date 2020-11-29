@@ -49,15 +49,32 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 
 	service.Name = s.Service
 
-	// Check if the service already exists
-	serviceNamePrefix := service.serviceNamePrefix(cfg)
-	serviceName, err = service.checkServiceExists(clients, cfg, serviceNamePrefix)
+	// Check if the cluster exists
+	clusterExists, err := clients.ClusterExists(cfg)
 	if err != nil {
 		return serviceName, err
 	}
 
-	// Update the service
+	// Create a default cluster if it doesn't
+	if !clusterExists {
+		err = clients.CreateCluster(cfg)
+		if err != nil {
+			return serviceName, err
+		}
+	}
+
+	// If the cluster exists, check if the service exists
+	if clusterExists {
+		serviceNamePrefix := service.serviceNamePrefix(cfg)
+		serviceName, err = service.checkServiceExists(clients, cfg, serviceNamePrefix)
+		if err != nil {
+			return serviceName, err
+		}
+	}
+
+	// Update the service if it already exists
 	if serviceName != "" {
+		Log.Infof("Updating service %s", serviceName)
 		serviceName, err = service.Update(clients, cfg, serviceName)
 		if err != nil {
 			return serviceName, err
@@ -68,6 +85,7 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 	}
 
 	// Otherwise create the service
+	Log.Infof("Creating service %s", serviceName)
 	serviceName, err = service.Create(clients, cfg)
 	if err != nil {
 		return serviceName, err
@@ -91,7 +109,9 @@ func (s Service) Update(c Clients, cfg Config, service string) (serviceName stri
 		return serviceName, fmt.Errorf("cannot find task definition called %s", s.Definition)
 	}
 
-	taskDefinitionArn, err := definition.Create(c, cfg, service)
+	serviceNamePrefix := s.serviceNamePrefix(cfg)
+
+	taskDefinitionArn, err := definition.Create(c, cfg, serviceNamePrefix)
 	if err != nil {
 		return serviceName, err
 	}
@@ -132,20 +152,6 @@ func (s Service) Create(c Clients, cfg Config) (serviceName string, err error) {
 	// serviceNamePrefix ensures that services have unique IDs, which will
 	// eventually be used when we have to safely recreate a service
 	serviceNamePrefix := s.serviceNamePrefix(cfg)
-
-	// Check if the cluster exists
-	clusterExists, err := c.ClusterExists(cfg)
-	if err != nil {
-		return serviceName, err
-	}
-
-	// Create a default cluster if it doesn't
-	if !clusterExists {
-		err = c.CreateCluster(cfg)
-		if err != nil {
-			return serviceName, err
-		}
-	}
 
 	networkConfiguration, err := c.NetworkConfiguration(cfg)
 	if err != nil {
@@ -208,7 +214,7 @@ func (s Service) Create(c Clients, cfg Config) (serviceName string, err error) {
 	return serviceName, err
 }
 
-// Delete a service (but not created log groups, clusters or roles)
+// Destroy deletes a service (but not created log groups, clusters or roles)
 func (s Service) Destroy(c Clients, cfg Config) (serviceName string, err error) {
 	clientECS := c.ECS
 
