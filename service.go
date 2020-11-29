@@ -57,7 +57,7 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 
 	// Create a default cluster if it doesn't
 	if !clusterExists {
-		err = clients.CreateCluster(cfg)
+		err = clients.CreateCluster(cfg, 5)
 		if err != nil {
 			return serviceName, err
 		}

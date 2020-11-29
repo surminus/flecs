@@ -28,7 +28,7 @@ func (c Clients) ClusterExists(cfg Config) (result bool, err error) {
 }
 
 // CreateCluster creates a new cluster
-func (c Clients) CreateCluster(cfg Config) (err error) {
+func (c Clients) CreateCluster(cfg Config, timeout time.Duration) (err error) {
 	Log.Infof("Creating cluster %s", cfg.Options.ClusterName)
 
 	createClusterInput := ecs.CreateClusterInput{
@@ -42,7 +42,7 @@ func (c Clients) CreateCluster(cfg Config) (err error) {
 	clusterCreated := false
 	for count := 0; count < 30; count++ {
 		Log.Infof("Waiting for cluster to provision")
-		time.Sleep(10 * time.Second)
+		time.Sleep(timeout * time.Second)
 
 		describeClusterInput := ecs.DescribeClustersInput{
 			Clusters: aws.StringSlice([]string{cfg.Options.ClusterName}),
@@ -68,7 +68,7 @@ func (c Clients) CreateCluster(cfg Config) (err error) {
 	}
 
 	// Wait 5 seconds for luck
-	time.Sleep(5 * time.Second)
+	time.Sleep(timeout * time.Second)
 
 	return err
 }

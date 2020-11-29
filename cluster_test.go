@@ -8,12 +8,19 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 )
 
+var (
+	clients Clients
+	err     error
+)
+
+var config = Config{
+	Options: ConfigOptions{
+		ClusterName: "test",
+	},
+}
+
 func TestClusterExists(t *testing.T) {
-	var (
-		clients Clients
-		resp    bool
-		err     error
-	)
+	var resp bool
 
 	clients = Clients{
 		ECS: mockedECSClient{},
@@ -37,16 +44,48 @@ func TestClusterExists(t *testing.T) {
 		},
 	}
 
-	resp, err = clients.ClusterExists(
-		Config{
-			Options: ConfigOptions{
-				ClusterName: "test",
-			},
-		},
-	)
+	resp, err = clients.ClusterExists(config)
 	assert.Nil(t, err)
 
 	t.Log(resp)
 
 	assert.Equal(t, true, resp, "Cluster exists")
+}
+
+func TestCreateCluster(t *testing.T) {
+	clients = Clients{
+		ECS: mockedECSClient{
+			DescribeClustersResp: ecs.DescribeClustersOutput{
+				Clusters: []*ecs.Cluster{
+					&ecs.Cluster{
+						ClusterName: aws.String("test"),
+						Status:      aws.String("ACTIVE"),
+					},
+				},
+			},
+			CreateClusterResp: ecs.CreateClusterOutput{},
+		},
+	}
+
+	err = clients.CreateCluster(config, 0)
+	assert.Nil(t, err)
+}
+
+func TestDeleteCluster(t *testing.T) {
+	clients = Clients{
+		ECS: mockedECSClient{
+			DescribeClustersResp: ecs.DescribeClustersOutput{
+				Clusters: []*ecs.Cluster{
+					&ecs.Cluster{
+						ClusterName: aws.String("test"),
+						Status:      aws.String("ACTIVE"),
+					},
+				},
+			},
+			DeleteClusterResp: ecs.DeleteClusterOutput{},
+		},
+	}
+
+	err = clients.DeleteCluster(config)
+	assert.Nil(t, err)
 }
