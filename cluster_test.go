@@ -16,7 +16,7 @@ func TestClusterExists(t *testing.T) {
 	)
 
 	clients = Clients{
-		ECS: mockedDescribeClusters{Resp: ecs.DescribeClustersOutput{}},
+		ECS: mockedECSClient{},
 	}
 
 	resp, err = clients.ClusterExists(Config{})
@@ -25,8 +25,8 @@ func TestClusterExists(t *testing.T) {
 	assert.Equal(t, false, resp, "Cluster does not exist")
 
 	clients = Clients{
-		ECS: mockedDescribeClusters{
-			Resp: ecs.DescribeClustersOutput{
+		ECS: mockedECSClient{
+			DescribeClustersResp: ecs.DescribeClustersOutput{
 				Clusters: []*ecs.Cluster{
 					&ecs.Cluster{
 						ClusterName: aws.String("test"),

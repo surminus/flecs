@@ -10,11 +10,12 @@ import (
 // in this file to allow easy testing against all interfaces
 
 // ECS
-type mockedDescribeClusters struct {
+type mockedECSClient struct {
 	ecsiface.ECSAPI
-	Resp ecs.DescribeClustersOutput
+
+	DescribeClustersResp ecs.DescribeClustersOutput
 }
 
-func (m mockedDescribeClusters) DescribeClusters(in *ecs.DescribeClustersInput) (*ecs.DescribeClustersOutput, error) {
-	return &m.Resp, nil
+func (m mockedECSClient) DescribeClusters(in *ecs.DescribeClustersInput) (*ecs.DescribeClustersOutput, error) {
+	return &m.DescribeClustersResp, nil
 }
