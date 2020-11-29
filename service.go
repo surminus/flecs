@@ -80,6 +80,47 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 
 // Update updates a running service
 func (s Service) Update(c Clients, cfg Config, service string) (serviceName string, err error) {
+	networkConfiguration, err := c.NetworkConfiguration(cfg)
+	if err != nil {
+		return serviceName, err
+	}
+
+	// Register task definition
+	definition, ok := cfg.Definitions[s.Definition]
+	if !ok {
+		return serviceName, fmt.Errorf("cannot find task definition called %s", s.Definition)
+	}
+
+	taskDefinitionArn, err := definition.Create(c, cfg, service)
+	if err != nil {
+		return serviceName, err
+	}
+	Log.Infof("Registered task definition %s", taskDefinitionArn)
+
+	input := ecs.UpdateServiceInput{
+		Cluster:              aws.String(cfg.Options.ClusterName),
+		NetworkConfiguration: &networkConfiguration,
+		Service:              aws.String(service),
+		TaskDefinition:       aws.String(taskDefinitionArn),
+	}
+
+	resp, err := c.ECS.UpdateService(&input)
+	if err != nil {
+		return serviceName, err
+	}
+
+	serviceName = aws.StringValue(resp.Service.ServiceName)
+
+	waitUntilInput := ecs.DescribeServicesInput{
+		Cluster:  aws.String(cfg.Options.ClusterName),
+		Services: aws.StringSlice([]string{serviceName}),
+	}
+
+	err = c.ECS.WaitUntilServicesStable(&waitUntilInput)
+	if err != nil {
+		return serviceName, err
+	}
+
 	return serviceName, err
 }
 
