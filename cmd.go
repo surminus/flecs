@@ -20,6 +20,9 @@ func init() {
 	cmd.PersistentFlags().StringP("tag", "t", "", "The tag is used by images")
 	CheckError(viper.BindPFlag("tag", cmd.PersistentFlags().Lookup("tag")))
 
+	deploy.PersistentFlags().Bool("recreate-services", false, "Force a recreation of all services")
+	CheckError(viper.BindPFlag("deploy.recreate_services", deploy.PersistentFlags().Lookup("recreate-services")))
+
 	cmd.AddCommand(deploy, rm)
 }
 

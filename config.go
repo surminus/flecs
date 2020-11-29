@@ -38,6 +38,8 @@ type Config struct {
 
 	EnvironmentName string
 	Tag             string
+
+	RecreateServices bool
 }
 
 // Step describes a step in the pipeline
@@ -163,6 +165,11 @@ func LoadConfig() (config Config, err error) {
 
 	if config.Options.ECRRegion == "" && envConfig.ECRRegion == "" {
 		config.Options.ECRRegion = config.Options.Region
+	}
+
+	// Set config option to recreate services
+	if viper.GetBool("deploy.recreate_services") {
+		config.RecreateServices = true
 	}
 
 	// Check and set Pipeline
