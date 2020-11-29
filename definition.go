@@ -61,15 +61,9 @@ type VolumeFrom struct {
 
 // Create registers a new task definition, and creates any resources if they
 // do not exist
-func (d Definition) Create(c Client, cfg Config, name string) (arn string, err error) {
-	// Set up ECS client
-	clients, err := c.InitClients()
-	if err != nil {
-		return arn, err
-	}
-
-	client := clients.ECS
-	clientSTS := clients.STS
+func (d Definition) Create(c Clients, cfg Config, name string) (arn string, err error) {
+	client := c.ECS
+	clientSTS := c.STS
 
 	// Fetch current account ID
 	getCallerIdentityOutput, err := clientSTS.GetCallerIdentity(&sts.GetCallerIdentityInput{})
@@ -86,7 +80,7 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 	}
 
 	if d.ExecutionRoleName == "" {
-		executionRoleArn, err = d.createDefaultExecutionRole(clients)
+		executionRoleArn, err = d.createDefaultExecutionRole(c)
 		if err != nil {
 			return arn, err
 		}
@@ -104,7 +98,7 @@ func (d Definition) Create(c Client, cfg Config, name string) (arn string, err e
 		family = strings.Join([]string{family, cfg.EnvironmentName}, "-")
 	}
 
-	err = d.createLogGroup(clients, cfg.Options.LogGroupName)
+	err = d.createLogGroup(c, cfg.Options.LogGroupName)
 	if err != nil {
 		return arn, err
 	}

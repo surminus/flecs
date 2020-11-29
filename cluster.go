@@ -67,6 +67,9 @@ func (c Clients) CreateCluster(cfg Config) (err error) {
 		return fmt.Errorf("Failed to create cluster!")
 	}
 
+	// Wait 5 seconds for luck
+	time.Sleep(5 * time.Second)
+
 	return err
 }
 

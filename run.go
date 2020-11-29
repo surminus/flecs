@@ -26,20 +26,11 @@ func (config Config) Deploy() (err error) {
 				Log.Info("Name: ", step.Service.Name)
 			}
 
-			service, ok := config.Services[step.Service.Service]
-			if !ok {
-				return fmt.Errorf("cannot find service configured called %s", step.Service.Service)
-			}
-
-			service.Name = step.Service.Service
-
 			client := Client{Region: config.Options.Region}
-			serviceName, err := service.Create(client, config)
+			_, err = step.Service.Run(client, config)
 			if err != nil {
 				return err
 			}
-
-			Log.Infof("Configured service %s", serviceName)
 
 		case "script":
 			Log.Infof("[step %d] ==> script", i+1)
@@ -73,6 +64,12 @@ func (config Config) Deploy() (err error) {
 
 // Remove deletes a resource
 func (config Config) Remove(resource, name string) (err error) {
+	c := Client{Region: config.Options.Region}
+	clients, err := c.InitClients()
+	if err != nil {
+		return err
+	}
+
 	switch resource {
 	case "service":
 		service, ok := config.Services[name]
@@ -82,8 +79,7 @@ func (config Config) Remove(resource, name string) (err error) {
 
 		service.Name = name
 
-		client := Client{Region: config.Options.Region}
-		serviceName, err := service.Destroy(client, config)
+		serviceName, err := service.Destroy(clients, config)
 		if err != nil {
 			return err
 		}
@@ -91,13 +87,6 @@ func (config Config) Remove(resource, name string) (err error) {
 		Log.Infof("Deleted service %s", serviceName)
 
 	case "cluster":
-		client := Client{Region: config.Options.Region}
-		// Set up ECS client
-		clients, err := client.InitClients()
-		if err != nil {
-			return err
-		}
-
 		clients.DeleteCluster(config)
 	}
 
