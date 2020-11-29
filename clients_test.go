@@ -13,9 +13,19 @@ import (
 type mockedECSClient struct {
 	ecsiface.ECSAPI
 
+	CreateClusterResp    ecs.CreateClusterOutput
+	DeleteClusterResp    ecs.DeleteClusterOutput
 	DescribeClustersResp ecs.DescribeClustersOutput
 }
 
-func (m mockedECSClient) DescribeClusters(in *ecs.DescribeClustersInput) (*ecs.DescribeClustersOutput, error) {
+func (m mockedECSClient) CreateCluster(*ecs.CreateClusterInput) (*ecs.CreateClusterOutput, error) {
+	return &m.CreateClusterResp, nil
+}
+
+func (m mockedECSClient) DeleteCluster(*ecs.DeleteClusterInput) (*ecs.DeleteClusterOutput, error) {
+	return &m.DeleteClusterResp, nil
+}
+
+func (m mockedECSClient) DescribeClusters(*ecs.DescribeClustersInput) (*ecs.DescribeClustersOutput, error) {
 	return &m.DescribeClustersResp, nil
 }
