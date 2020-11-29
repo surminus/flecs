@@ -1,4 +1,4 @@
-# Flecs
+# Flecs ![GitHub Actions](https://github.com/surminus/flecs/workflows/CI/badge.svg)
 
 Flexible [ECS](https://aws.amazon.com/ecs/) deployment!
 
