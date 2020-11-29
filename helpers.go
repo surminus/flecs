@@ -16,9 +16,3 @@ func CheckError(err error) {
 		os.Exit(1)
 	}
 }
-
-// Abort will log the message and quit
-func Abort(message string) {
-	Log.Error(message)
-	os.Exit(1)
-}

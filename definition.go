@@ -240,7 +240,7 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 			})
 		}
 
-		var image string
+		image := container.Image
 		if container.DynamicTag {
 			imgSplit := strings.Split(image, ":")
 			if len(imgSplit) > 1 {
@@ -253,7 +253,7 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 		containerDefinition := ecs.ContainerDefinition{
 			Environment:      environmentVariables,
 			Essential:        aws.Bool(essential),
-			Image:            aws.String(container.Image),
+			Image:            aws.String(image),
 			LogConfiguration: &logConfiguration,
 			Name:             aws.String(container.Name),
 			Secrets:          secrets,

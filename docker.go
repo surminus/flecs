@@ -145,7 +145,10 @@ func (d DockerStep) loginToECR(clients Clients, registry string) (err error) {
 
 	go func() {
 		defer stdin.Close()
-		io.WriteString(stdin, token)
+		_, err = io.WriteString(stdin, token)
+		if err != nil {
+			return
+		}
 	}()
 
 	err = command.Run()
