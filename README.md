@@ -22,6 +22,10 @@ I'm writing this for fun, so I would strongly recommend using other tools.
 Copilot](https://aws.amazon.com/containers/copilot/) are two that will probably
 become the de-facto way to deploy to ECS in the future.
 
+## Install
+
+Grab a binary from [releases](https://github.com/surminus/flecs/releases).
+
 ## Configuration
 
 All configuration exists in a single `flecs.yaml` file.
@@ -114,9 +118,3 @@ environments:
 ```
 
 Using `flecs -e production` will mean that Production configuration is used.
-
-## Install
-
-Clone the repository.
-
-Run `go build`.
