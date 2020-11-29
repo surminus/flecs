@@ -1,4 +1,4 @@
-module github.com/futurelearn/flecs
+module github.com/surminus/flecs
 
 go 1.13
 
