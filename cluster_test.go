@@ -6,17 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
 )
-
-type mockedDescribeClusters struct {
-	ecsiface.ECSAPI
-	Resp ecs.DescribeClustersOutput
-}
-
-func (m mockedDescribeClusters) DescribeClusters(in *ecs.DescribeClustersInput) (*ecs.DescribeClustersOutput, error) {
-	return &m.Resp, nil
-}
 
 func TestClusterExists(t *testing.T) {
 	var (
