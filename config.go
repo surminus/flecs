@@ -11,6 +11,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// ConfigOptions contains all the configuration options that are configurable
+// either at a per environment level or at the plain top level.
 type ConfigOptions struct {
 	AssignPublicIP       bool              `yaml:"public_ip"`
 	ClusterName          string            `yaml:"cluster_name"`
