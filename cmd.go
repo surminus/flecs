@@ -3,18 +3,20 @@ package main
 import (
 	"io/ioutil"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	cfgFile string
+	cfgFile, flecsFile string
 )
 
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	cmd.PersistentFlags().StringVarP(&cfgFile, "file", "f", "", "Path to config file")
+	cmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to configuration file")
+	cmd.PersistentFlags().StringVarP(&flecsFile, "file", "f", "flecs.yaml", "Path to Flecsfile")
 
 	cmd.PersistentFlags().StringP("environment", "e", "", "An environment (or stage) to deploy to")
 	CheckError(viper.BindPFlag("environment", cmd.PersistentFlags().Lookup("environment")))
@@ -33,12 +35,16 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Search config in home directory with name ".cobra" (without extension).
-		viper.AddConfigPath(".")
-		viper.SetConfigName("flecs")
+		// Find home directory.
+		home, err := homedir.Dir()
+		CheckError(err)
+
+		// Search config in home directory with name ".flecs_cli" (without extension).
+		viper.AddConfigPath(home)
+		viper.SetConfigName(".flecs_cli")
 	}
 
-	CheckError(viper.ReadInConfig())
+	viper.ReadInConfig() //nolint,errcheck
 
 	viper.SetEnvPrefix("flecs")
 	viper.AutomaticEnv()
@@ -56,8 +62,7 @@ var deploy = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		Log.Info("START")
 
-		configPath := viper.GetViper().ConfigFileUsed()
-		file, err := ioutil.ReadFile(configPath)
+		file, err := ioutil.ReadFile(flecsFile)
 		CheckError(err)
 
 		// Each other function should accept the config type
@@ -81,8 +86,7 @@ var rm = &cobra.Command{
 	Short: "Run through the configured pipeline",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath := viper.GetViper().ConfigFileUsed()
-		file, err := ioutil.ReadFile(configPath)
+		file, err := ioutil.ReadFile(flecsFile)
 		CheckError(err)
 
 		// Each other function should accept the config type
