@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path"
 
 	"gopkg.in/yaml.v2"
 )
@@ -50,7 +48,7 @@ type Step struct {
 
 // LoadConfig will load all configuration options if they exist, allowing
 // environment specific options to override top level options
-func LoadConfig(c []byte, environment, tag string, recreate bool) (config Config, err error) {
+func LoadConfig(c []byte, environment, tag, projectName string, recreate bool) (config Config, err error) {
 	err = yaml.Unmarshal(c, &config)
 	if err != nil {
 		return config, err
@@ -77,13 +75,12 @@ func LoadConfig(c []byte, environment, tag string, recreate bool) (config Config
 	}
 
 	// Set default project name
-	if config.ProjectName == "" {
-		wd, err := os.Getwd()
-		if err != nil {
-			return config, err
-		}
+	if config.ProjectName == "" && projectName == "" {
+		config.ProjectName = "default"
+	}
 
-		config.ProjectName = path.Base(wd)
+	if config.ProjectName == "" && projectName != "" {
+		config.ProjectName = projectName
 	}
 
 	// Set ClusterName

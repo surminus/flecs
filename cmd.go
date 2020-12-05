@@ -2,6 +2,8 @@ package main
 
 import (
 	"io/ioutil"
+	"os"
+	"path"
 
 	"github.com/go-git/go-git/v5"
 	homedir "github.com/mitchellh/go-homedir"
@@ -24,6 +26,9 @@ func init() {
 
 	cmd.PersistentFlags().StringP("tag", "t", "", "The tag is used by images")
 	CheckError(viper.BindPFlag("tag", cmd.PersistentFlags().Lookup("tag")))
+
+	cmd.PersistentFlags().StringP("project", "p", "", "The project name")
+	CheckError(viper.BindPFlag("project", cmd.PersistentFlags().Lookup("project")))
 
 	deploy.PersistentFlags().Bool("recreate-services", false, "Force a recreation of all services")
 	CheckError(viper.BindPFlag("deploy.recreate_services", deploy.PersistentFlags().Lookup("recreate-services")))
@@ -70,11 +75,16 @@ var deploy = &cobra.Command{
 		tag, err := getTag()
 		CheckError(err)
 
+		// Declare project name
+		project, err := getProject()
+		CheckError(err)
+
 		// Each other function should accept the config type
 		config, err := LoadConfig(
 			file,
 			viper.GetString("environment"),
 			tag,
+			project,
 			viper.GetBool("deploy.recreate_services"),
 		)
 		CheckError(err)
@@ -99,11 +109,16 @@ var rm = &cobra.Command{
 		tag, err := getTag()
 		CheckError(err)
 
+		// Declare project name
+		project, err := getProject()
+		CheckError(err)
+
 		// Each other function should accept the config type
 		config, err := LoadConfig(
 			file,
 			viper.GetString("environment"),
 			tag,
+			project,
 			viper.GetBool("deploy.recreate_services"),
 		)
 		CheckError(err)
@@ -149,4 +164,21 @@ func getTag() (tag string, err error) {
 	}
 
 	return tag, err
+}
+
+func getProject() (project string, err error) {
+	if viper.GetString("project") != "" {
+		project = viper.GetString("project")
+	}
+
+	if viper.GetString("project") == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return project, err
+		}
+
+		project = path.Base(wd)
+	}
+
+	return project, err
 }
