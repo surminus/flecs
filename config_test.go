@@ -34,17 +34,62 @@ pipeline:
 	actual, err = LoadConfig(yamlConfig, "", "", "", false)
 	assert.Nil(t, err)
 
+	options := defaultConfigOptions
+	options.Pipeline = []Step{
+		Step{
+			Script: ScriptStep{
+				Inline: "test",
+			},
+			Type: "script",
+		},
+	}
+
 	expected = Config{
-		Options:     defaultConfigOptions,
+		Options:     options,
 		ProjectName: "default",
-		Pipeline: []Step{
-			Step{
-				Script: ScriptStep{
-					Inline: "test",
-				},
-				Type: "script",
+	}
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestLoadConfigEnvironments(t *testing.T) {
+	yamlConfig = `---
+region: eu-west-2
+
+environments:
+  test:
+    region: eu-west-2
+
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "test", "", "", false)
+	assert.Nil(t, err)
+
+	options := defaultConfigOptions
+	options.Pipeline = []Step{
+		Step{
+			Script: ScriptStep{
+				Inline: "test",
+			},
+			Type: "script",
+		},
+	}
+
+	options.Region = "eu-west-2"
+	options.ECRRegion = options.Region
+
+	expected = Config{
+		Options: options,
+		Environments: map[string]ConfigOptions{
+			"test": ConfigOptions{
+				Region: "eu-west-2",
 			},
 		},
+		EnvironmentName: "test",
+		ProjectName:     "default",
 	}
 
 	assert.Equal(t, expected, actual)
