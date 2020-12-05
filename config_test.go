@@ -170,3 +170,14 @@ pipeline:
 
 	assert.Equal(t, expected, actual)
 }
+
+func TestLoadConfigPipelineError(t *testing.T) {
+	yamlConfig = `---
+pipeline:
+  - foo:
+      name: Not a real step
+`
+
+	actual, err = LoadConfig(yamlConfig, "", "", "", false)
+	assert.NotNil(t, err)
+}
