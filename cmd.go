@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 
+	"github.com/go-git/go-git/v5"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -65,10 +66,15 @@ var deploy = &cobra.Command{
 		file, err := ioutil.ReadFile(flecsFile)
 		CheckError(err)
 
+		// Declare tag
+		tag, err := getTag()
+		CheckError(err)
+
 		// Each other function should accept the config type
 		config, err := LoadConfig(
 			file,
 			viper.GetString("environment"),
+			tag,
 			viper.GetBool("deploy.recreate_services"),
 		)
 		CheckError(err)
@@ -89,10 +95,15 @@ var rm = &cobra.Command{
 		file, err := ioutil.ReadFile(flecsFile)
 		CheckError(err)
 
+		// Declare tag
+		tag, err := getTag()
+		CheckError(err)
+
 		// Each other function should accept the config type
 		config, err := LoadConfig(
 			file,
 			viper.GetString("environment"),
+			tag,
 			viper.GetBool("deploy.recreate_services"),
 		)
 		CheckError(err)
@@ -116,4 +127,26 @@ var rm = &cobra.Command{
 			Log.Fatalf("Unrecognised resource %s", args[0])
 		}
 	},
+}
+
+func getTag() (tag string, err error) {
+	if viper.GetString("tag") != "" {
+		tag = viper.GetString("tag")
+	}
+
+	if viper.GetString("tag") == "" {
+		r, err := git.PlainOpen(".")
+		if err != nil {
+			return tag, err
+		}
+
+		ref, err := r.Head()
+		if err != nil {
+			return tag, err
+		}
+
+		tag = ref.Hash().String()
+	}
+
+	return tag, err
 }

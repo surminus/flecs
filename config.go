@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/go-git/go-git/v5"
 	"gopkg.in/yaml.v2"
 )
 
@@ -51,8 +50,8 @@ type Step struct {
 
 // LoadConfig will load all configuration options if they exist, allowing
 // environment specific options to override top level options
-func LoadConfig(file []byte, environment string, recreate bool) (config Config, err error) {
-	err = yaml.Unmarshal(file, &config)
+func LoadConfig(c []byte, environment, tag string, recreate bool) (config Config, err error) {
+	err = yaml.Unmarshal(c, &config)
 	if err != nil {
 		return config, err
 	}
@@ -68,21 +67,10 @@ func LoadConfig(file []byte, environment string, recreate bool) (config Config, 
 		config.Options.ClusterName = config.Environments[config.EnvironmentName].ClusterName
 	}
 
-	if config.Tag == "" {
-		r, err := git.PlainOpen(".")
-		if err != nil {
-			return config, err
-		}
+	// Set tag
+	config.Tag = tag
 
-		ref, err := r.Head()
-		if err != nil {
-			return config, err
-		}
-
-		config.Tag = ref.Hash().String()
-		Log.Infof("Using tag %s", config.Tag)
-	}
-
+	// Load environment config
 	envConfig, err := config.getEnvConfig(environment)
 	if err != nil {
 		return config, err
