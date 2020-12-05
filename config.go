@@ -48,8 +48,8 @@ type Step struct {
 
 // LoadConfig will load all configuration options if they exist, allowing
 // environment specific options to override top level options
-func LoadConfig(c []byte, environment, tag, projectName string, recreate bool) (config Config, err error) {
-	err = yaml.Unmarshal(c, &config)
+func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool) (config Config, err error) {
+	err = yaml.Unmarshal([]byte(yamlConfig), &config)
 	if err != nil {
 		return config, err
 	}

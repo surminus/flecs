@@ -81,7 +81,7 @@ var deploy = &cobra.Command{
 
 		// Each other function should accept the config type
 		config, err := LoadConfig(
-			file,
+			string(file),
 			viper.GetString("environment"),
 			tag,
 			project,
@@ -115,7 +115,7 @@ var rm = &cobra.Command{
 
 		// Each other function should accept the config type
 		config, err := LoadConfig(
-			file,
+			string(file),
 			viper.GetString("environment"),
 			tag,
 			project,
