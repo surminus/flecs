@@ -203,3 +203,82 @@ pipeline:
 	actual, err = LoadConfig(yamlConfig, "", "", "", false)
 	assert.NotNil(t, err)
 }
+
+func TestLoadConfigProjectName(t *testing.T) {
+	yamlConfig = `---
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "", "", "my-project", false)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "my-project", actual.ProjectName)
+}
+
+func TestLoadConfigTag(t *testing.T) {
+	yamlConfig = `---
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "", "some-tag", "", false)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "some-tag", actual.Tag)
+}
+
+func TestLoadConfigMergeEnvVars(t *testing.T) {
+	yamlConfig = `---
+environment_variables:
+  yellow: banana
+
+environments:
+  test:
+    environment_variables:
+      red: grapes
+
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "test", "", "", false)
+	assert.Nil(t, err)
+
+	expected := map[string]string{
+		"yellow": "banana",
+		"red":    "grapes",
+	}
+
+	assert.Equal(t, expected, actual.Options.EnvironmentVariables)
+}
+
+func TestLoadConfigMergeSecrets(t *testing.T) {
+	yamlConfig = `---
+secrets:
+  yellow: banana
+
+environments:
+  test:
+    secrets:
+      red: grapes
+
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "test", "", "", false)
+	assert.Nil(t, err)
+
+	expected := map[string]string{
+		"yellow": "banana",
+		"red":    "grapes",
+	}
+
+	assert.Equal(t, expected, actual.Options.Secrets)
+
+}
