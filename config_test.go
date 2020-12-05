@@ -94,3 +94,79 @@ pipeline:
 
 	assert.Equal(t, expected, actual)
 }
+
+func TestLoadConfigFullPipeline(t *testing.T) {
+	yamlConfig = `---
+pipeline:
+  - script:
+      name: Inline test
+      inline: test
+  - script:
+      name: Path test
+      path: /foo/bar
+  - docker:
+      name: Docker test
+      dockerfile: Dockerfile
+      repository: test/repo
+  - service:
+      name: Service test
+      service: test
+  - task:
+      name: Task test
+      command: uptime
+      container: alpine
+      definition: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "", "", "", false)
+	assert.Nil(t, err)
+
+	options := defaultConfigOptions
+	options.Pipeline = []Step{
+		Step{
+			Script: ScriptStep{
+				Name:   "Inline test",
+				Inline: "test",
+			},
+			Type: "script",
+		},
+		Step{
+			Script: ScriptStep{
+				Name: "Path test",
+				Path: "/foo/bar",
+			},
+			Type: "script",
+		},
+		Step{
+			Docker: DockerStep{
+				Name:       "Docker test",
+				Dockerfile: "Dockerfile",
+				Repository: "test/repo",
+			},
+			Type: "docker",
+		},
+		Step{
+			Service: ServiceStep{
+				Name:    "Service test",
+				Service: "test",
+			},
+			Type: "service",
+		},
+		Step{
+			Task: TaskStep{
+				Name:       "Task test",
+				Command:    "uptime",
+				Container:  "alpine",
+				Definition: "test",
+			},
+			Type: "task",
+		},
+	}
+
+	expected = Config{
+		Options:     options,
+		ProjectName: "default",
+	}
+
+	assert.Equal(t, expected, actual)
+}
