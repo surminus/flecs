@@ -29,8 +29,6 @@ func (c Clients) ClusterExists(cfg Config) (result bool, err error) {
 
 // CreateCluster creates a new cluster
 func (c Clients) CreateCluster(cfg Config, timeout time.Duration) (err error) {
-	Log.Infof("Creating cluster %s", cfg.Options.ClusterName)
-
 	createClusterInput := ecs.CreateClusterInput{
 		ClusterName: aws.String(cfg.Options.ClusterName),
 	}
@@ -41,7 +39,6 @@ func (c Clients) CreateCluster(cfg Config, timeout time.Duration) (err error) {
 
 	clusterCreated := false
 	for count := 0; count < 30; count++ {
-		Log.Infof("Waiting for cluster to provision")
 		time.Sleep(timeout * time.Second)
 
 		describeClusterInput := ecs.DescribeClustersInput{
@@ -75,8 +72,6 @@ func (c Clients) CreateCluster(cfg Config, timeout time.Duration) (err error) {
 
 // DeleteCluster deletes a cluster
 func (c Clients) DeleteCluster(cfg Config) (err error) {
-	Log.Infof("Deleting cluster %s", cfg.Options.ClusterName)
-
 	deleteClusterInput := ecs.DeleteClusterInput{
 		Cluster: aws.String(cfg.Options.ClusterName),
 	}
@@ -84,8 +79,6 @@ func (c Clients) DeleteCluster(cfg Config) (err error) {
 	if err != nil {
 		return err
 	}
-
-	Log.Infof("Cluster %s deleted", cfg.Options.ClusterName)
 
 	return err
 }

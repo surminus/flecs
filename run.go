@@ -93,10 +93,12 @@ func (config Config) Remove(resource, name string) (err error) {
 		Log.Infof("Deleted service %s", serviceName)
 
 	case "cluster":
+		Log.Infof("Deleting cluster %s", config.Options.ClusterName)
 		err = clients.DeleteCluster(config)
 		if err != nil {
 			return err
 		}
+		Log.Infof("Cluster %s deleted", config.Options.ClusterName)
 	}
 
 	return err
