@@ -1,6 +1,8 @@
 package main
 
 import (
+	"io/ioutil"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -54,8 +56,16 @@ var deploy = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		Log.Info("START")
 
+		configPath := viper.GetViper().ConfigFileUsed()
+		file, err := ioutil.ReadFile(configPath)
+		CheckError(err)
+
 		// Each other function should accept the config type
-		config, err := LoadConfig()
+		config, err := LoadConfig(
+			file,
+			viper.GetString("environment"),
+			viper.GetBool("deploy.recreate_services"),
+		)
 		CheckError(err)
 
 		err = config.Deploy()
@@ -71,8 +81,16 @@ var rm = &cobra.Command{
 	Short: "Run through the configured pipeline",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath := viper.GetViper().ConfigFileUsed()
+		file, err := ioutil.ReadFile(configPath)
+		CheckError(err)
+
 		// Each other function should accept the config type
-		config, err := LoadConfig()
+		config, err := LoadConfig(
+			file,
+			viper.GetString("environment"),
+			viper.GetBool("deploy.recreate_services"),
+		)
 		CheckError(err)
 
 		switch args[0] {

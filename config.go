@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
 
@@ -53,21 +51,15 @@ type Step struct {
 
 // LoadConfig will load all configuration options if they exist, allowing
 // environment specific options to override top level options
-func LoadConfig() (config Config, err error) {
-	configPath := viper.GetViper().ConfigFileUsed()
-	file, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return config, err
-	}
-
+func LoadConfig(file []byte, environment string, recreate bool) (config Config, err error) {
 	err = yaml.Unmarshal(file, &config)
 	if err != nil {
 		return config, err
 	}
 
 	// Configure default options
-	if viper.GetString("environment") != "" {
-		config.EnvironmentName = viper.GetString("environment")
+	if environment != "" {
+		config.EnvironmentName = environment
 
 		if _, ok := config.Environments[config.EnvironmentName]; !ok {
 			return config, fmt.Errorf("no environment configuration found")
@@ -91,7 +83,7 @@ func LoadConfig() (config Config, err error) {
 		Log.Infof("Using tag %s", config.Tag)
 	}
 
-	envConfig, err := config.getEnvConfig()
+	envConfig, err := config.getEnvConfig(environment)
 	if err != nil {
 		return config, err
 	}
@@ -167,10 +159,7 @@ func LoadConfig() (config Config, err error) {
 		config.Options.ECRRegion = config.Options.Region
 	}
 
-	// Set config option to recreate services
-	if viper.GetBool("deploy.recreate_services") {
-		config.RecreateServices = true
-	}
+	config.RecreateServices = recreate
 
 	// Check and set Pipeline
 	if len(config.Pipeline) < 1 && len(envConfig.Pipeline) < 1 {
@@ -213,9 +202,9 @@ func LoadConfig() (config Config, err error) {
 	return config, err
 }
 
-func (c Config) getEnvConfig() (env ConfigOptions, err error) {
-	if viper.GetString("environment") != "" {
-		e := viper.GetString("environment")
+func (c Config) getEnvConfig(environment string) (env ConfigOptions, err error) {
+	if environment != "" {
+		e := environment
 
 		env, ok := c.Environments[e]
 		if !ok {
