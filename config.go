@@ -23,11 +23,10 @@ type ConfigOptions struct {
 
 // Config represents all options that can be configured by a flecs config file
 type Config struct {
-	Options ConfigOptions
+	Options ConfigOptions `yaml:",inline"`
 
 	Definitions  map[string]Definition    `yaml:"definitions"`
 	Environments map[string]ConfigOptions `yaml:"environments"`
-	Pipeline     []Step                   `yaml:"pipeline"`
 	ProjectName  string                   `yaml:"project_name"`
 	Services     map[string]Service       `yaml:"services"`
 
@@ -147,16 +146,16 @@ func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool)
 	config.RecreateServices = recreate
 
 	// Check and set Pipeline
-	if len(config.Pipeline) < 1 && len(envConfig.Pipeline) < 1 {
+	if len(config.Options.Pipeline) < 1 && len(envConfig.Pipeline) < 1 {
 		return config, fmt.Errorf("pipeline configuration not found")
 	}
 
 	if len(envConfig.Pipeline) > 0 {
-		config.Pipeline = envConfig.Pipeline
+		config.Options.Pipeline = envConfig.Pipeline
 	}
 
 	// Check Pipeline for syntax errors
-	for index, step := range config.Pipeline {
+	for index, step := range config.Options.Pipeline {
 		serviceSet := step.Service != (ServiceStep{})
 		taskSet := step.Task != (TaskStep{})
 		scriptSet := step.Script != (ScriptStep{})
@@ -168,19 +167,19 @@ func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool)
 
 		// Here we set as a string what kind of step it is
 		if serviceSet {
-			config.Pipeline[index].Type = "service"
+			config.Options.Pipeline[index].Type = "service"
 		}
 
 		if taskSet {
-			config.Pipeline[index].Type = "task"
+			config.Options.Pipeline[index].Type = "task"
 		}
 
 		if scriptSet {
-			config.Pipeline[index].Type = "script"
+			config.Options.Pipeline[index].Type = "script"
 		}
 
 		if dockerSet {
-			config.Pipeline[index].Type = "docker"
+			config.Options.Pipeline[index].Type = "docker"
 		}
 	}
 

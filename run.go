@@ -6,7 +6,7 @@ import (
 
 // Deploy runs through the pipeline and performs each task
 func (config Config) Deploy() (err error) {
-	for i, step := range config.Pipeline {
+	for i, step := range config.Options.Pipeline {
 		switch step.Type {
 		case "task":
 			Log.Infof("[step %d] ==> task", i+1)
