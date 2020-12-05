@@ -56,12 +56,6 @@ func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool)
 	// Configure default options
 	if environment != "" {
 		config.EnvironmentName = environment
-
-		if _, ok := config.Environments[config.EnvironmentName]; !ok {
-			return config, fmt.Errorf("no environment configuration found")
-		}
-
-		config.Options.ClusterName = config.Environments[config.EnvironmentName].ClusterName
 	}
 
 	// Set tag
@@ -190,9 +184,10 @@ func (c Config) getEnvConfig(environment string) (env ConfigOptions, err error) 
 	if environment != "" {
 		e := environment
 
-		env, ok := c.Environments[e]
+		var ok bool
+		env, ok = c.Environments[e]
 		if !ok {
-			return env, fmt.Errorf("Cannot find environment config for %s", e)
+			return env, err
 		}
 	}
 

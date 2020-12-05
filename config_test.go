@@ -54,11 +54,12 @@ pipeline:
 
 func TestLoadConfigEnvironments(t *testing.T) {
 	yamlConfig = `---
-region: eu-west-2
+region: us-east-1
 
 environments:
   test:
     region: eu-west-2
+    cluster_name: test-cluster
 
 pipeline:
   - script:
@@ -80,12 +81,14 @@ pipeline:
 
 	options.Region = "eu-west-2"
 	options.ECRRegion = options.Region
+	options.ClusterName = "test-cluster"
 
 	expected = Config{
 		Options: options,
 		Environments: map[string]ConfigOptions{
 			"test": ConfigOptions{
-				Region: "eu-west-2",
+				Region:      "eu-west-2",
+				ClusterName: "test-cluster",
 			},
 		},
 		EnvironmentName: "test",
@@ -93,6 +96,25 @@ pipeline:
 	}
 
 	assert.Equal(t, expected, actual)
+}
+
+func TestLoadConfigEnvironmentNotExist(t *testing.T) {
+	yamlConfig = `---
+region: us-east-1
+
+environments:
+  test:
+    region: eu-west-2
+
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "production", "", "", false)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "us-east-1", actual.Options.Region)
 }
 
 func TestLoadConfigFullPipeline(t *testing.T) {
