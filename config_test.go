@@ -135,9 +135,7 @@ pipeline:
     service: test
   - type: task
     name: Task test
-    command: uptime
-    container: alpine
-    definition: test
+    task: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "", "", "", false)
@@ -176,9 +174,7 @@ pipeline:
 		},
 		Step{
 			Task: TaskStep{
-				Command:    "uptime",
-				Container:  "alpine",
-				Definition: "test",
+				Task: "test",
 			},
 			Type: "task",
 			Name: "Task test",
