@@ -40,7 +40,7 @@ type has it's own configuration options:
 | script | Runs a local script |
 | docker | Builds a Docker image and pushes it to an ECR repository |
 | service | Creates and/or updates an ECS service |
-| task | Runs a task in ECS using the specified definition |
+| task | Runs a one-off task in the ECS cluster |
 
 An example configuring the pipeline:
 
@@ -56,8 +56,7 @@ pipeline:
     service: web
     definition: nginx
   - type: task
-    command: uptime
-    definition: ubuntu
+    task: uptime
 ```
 
 ### Services
@@ -97,6 +96,28 @@ definitions:
     containers:
     - name: nginx
       image: nginx
+```
+
+### Tasks
+
+Tasks specify how a one-off task should be run. They require a task
+definition, and can also specify a command:
+
+```
+pipeline:
+  - type: task
+    task: uptime
+
+definitions:
+  ubuntu:
+    container:
+    - name: ubuntu
+      image: ubuntu
+
+tasks:
+  uptime:
+    definition: ubuntu
+    command: uptime
 ```
 
 ### Environments

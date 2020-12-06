@@ -10,9 +10,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 )
 
-// TaskStep runs a one-off task in the cluster, with a given command, task definition
-// and whatever other implementation details ECS requires.
+// TaskStep runs a one-off task in the cluster, specifying a task that should
+// be defined elsewhere
 type TaskStep struct {
+	Task string `yaml:"task"`
+}
+
+// Task specifies details of the task to be run
+type Task struct {
 	Command    string `yaml:"command"`
 	Container  string `yaml:"container"`
 	Definition string `yaml:"definition"`
@@ -28,16 +33,21 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 		return taskArn, err
 	}
 
-	if t.TaskName == "" && t.Command == "" {
+	task, ok := cfg.Tasks[t.Task]
+	if !ok {
+		return taskArn, fmt.Errorf("cannot find task configured called %s", t.Task)
+	}
+
+	if task.TaskName == "" && task.Command == "" {
 		return taskArn, fmt.Errorf("must specify either one of command or task_name")
 	}
 
-	if t.Definition == "" {
+	if task.Definition == "" {
 		return taskArn, fmt.Errorf("must specify task definition to use")
 	}
 
-	if t.LaunchType == "" {
-		t.LaunchType = "FARGATE"
+	if task.LaunchType == "" {
+		task.LaunchType = "FARGATE"
 	}
 
 	networkConfiguration, err := clients.NetworkConfiguration(cfg)
@@ -46,20 +56,20 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 	}
 
 	// Register task definition
-	definition, ok := cfg.Definitions[t.Definition]
+	definition, ok := cfg.Definitions[task.Definition]
 	if !ok {
-		return taskArn, fmt.Errorf("cannot find task definition called %s", t.Definition)
+		return taskArn, fmt.Errorf("cannot find task definition called %s", task.Definition)
 	}
 
-	if len(definition.Containers) > 1 && t.Container == "" {
+	if len(definition.Containers) > 1 && task.Container == "" {
 		return taskArn, fmt.Errorf("must specify container if more than one container in task definition")
 	}
 
 	taskName := fmt.Sprintf("%s-%s", "flecs", cfg.ProjectName)
-	if t.TaskName != "" && t.TaskName != cfg.ProjectName {
-		taskName = fmt.Sprintf("%s-%s", taskName, t.TaskName)
+	if task.TaskName != "" && task.TaskName != cfg.ProjectName {
+		taskName = fmt.Sprintf("%s-%s", taskName, task.TaskName)
 	} else {
-		name := strings.Split(t.Command, " ")[0]
+		name := strings.Split(task.Command, " ")[0]
 		taskName = fmt.Sprintf("%s-%s", taskName, name)
 	}
 
@@ -71,18 +81,18 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 
 	runTaskInput := ecs.RunTaskInput{
 		Cluster:              aws.String(cfg.Options.ClusterName),
-		LaunchType:           aws.String(t.LaunchType),
+		LaunchType:           aws.String(task.LaunchType),
 		NetworkConfiguration: &networkConfiguration,
 		TaskDefinition:       aws.String(taskDefinitionArn),
 	}
 
-	containerName := t.Container
+	containerName := task.Container
 	if containerName == "" {
 		containerName = definition.Containers[0].Name
 	}
 
-	if t.Command != "" {
-		command := strings.Split(t.Command, " ")
+	if task.Command != "" {
+		command := strings.Split(task.Command, " ")
 
 		overrides := ecs.TaskOverride{
 			ContainerOverrides: []*ecs.ContainerOverride{
@@ -128,9 +138,9 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 		return taskArn, err
 	}
 
-	task := describeTasksOutput.Tasks[0]
+	taskResp := describeTasksOutput.Tasks[0]
 
-	for _, container := range task.Containers {
+	for _, container := range taskResp.Containers {
 		if aws.Int64Value(container.ExitCode) != 0 {
 			if aws.StringValue(container.Reason) != "" {
 				return taskArn, fmt.Errorf("container %s failed: %s", aws.StringValue(container.Name), aws.StringValue(container.Reason))
@@ -143,7 +153,7 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 	logs := make(map[string][]string)
 	taskID := t.taskIDfromARN(taskArn)
 
-	for _, container := range task.Containers {
+	for _, container := range taskResp.Containers {
 		logStreamName := fmt.Sprintf("%s/%s/%s", taskName, aws.StringValue(container.Name), taskID)
 		_, err := t.waitForLogStream(clients, cfg, logStreamName)
 		if err != nil {

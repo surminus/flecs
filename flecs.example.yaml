@@ -19,9 +19,8 @@ pipeline:
   - type: docker
     name: Build and push image
   - type: task
+    task: uptime
     name: show uptime
-    command: uptime
-    definition: some-task
   - type: script
     name: list files
     inline: ls
@@ -40,6 +39,11 @@ services:
       target_group_arn: something
       container_name: nginx
       container_port: 80
+
+tasks:
+  uptime:
+    command: uptime
+    definition: some-task
 
 definitions:
   web:
