@@ -19,11 +19,9 @@ import (
 // images. For simplicity we're just going to wrap Docker commands so it
 // just needs to be installed.
 type DockerStep struct {
-	Description string     `yaml:"description"`
-	Dockerfile  string     `yaml:"dockerfile"`
-	Name        string     `yaml:"name"`
-	Repository  string     `yaml:"repository"`
-	Args        DockerArgs `yaml:"args"`
+	Dockerfile string     `yaml:"dockerfile"`
+	Repository string     `yaml:"repository"`
+	Args       DockerArgs `yaml:"args"`
 }
 
 // DockerArgs is a defined list of different arguments to pass to Docker

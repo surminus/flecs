@@ -46,18 +46,18 @@ An example configuring the pipeline:
 
 ```
 pipeline:
-  - script:
-      inline: uptime
-  - script:
-      path: path/to/script
-  - docker:
-      dockerfile: Dockerfile
-  - service:
-      service: web
-      definition: nginx
-  - task:
-      command: uptime
-      definition: ubuntu
+  - type: script
+    inline: uptime
+  - type: script
+    path: path/to/script
+  - type: docker
+    dockerfile: Dockerfile
+  - type: service
+    service: web
+    definition: nginx
+  - type: task
+    command: uptime
+    definition: ubuntu
 ```
 
 ### Services
@@ -67,8 +67,8 @@ is referred to by the `service` pipeline step:
 
 ```
 pipeline:
-  - service:
-      service: web
+  - type: service
+    service: web
 
 services:
   web:
@@ -84,8 +84,8 @@ referred to by a service definition, or the `task` pipeline step:
 ```
 
 pipeline:
-  - service:
-      service: web
+  - type: service
+    service: web
 
 services:
   web:

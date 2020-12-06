@@ -9,10 +9,8 @@ import (
 
 // Script runs an arbitary command
 type ScriptStep struct {
-	Description string `yaml:"description"`
-	Name        string `yaml:"name"`
-	Path        string `yaml:"path"`
-	Inline      string `yaml:"inline"`
+	Path   string `yaml:"path"`
+	Inline string `yaml:"inline"`
 }
 
 func (s ScriptStep) Run() (cmd exec.Cmd, err error) {

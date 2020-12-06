@@ -13,12 +13,11 @@ import (
 // TaskStep runs a one-off task in the cluster, with a given command, task definition
 // and whatever other implementation details ECS requires.
 type TaskStep struct {
-	Command     string `yaml:"command"`
-	Container   string `yaml:"container"`
-	Definition  string `yaml:"definition"`
-	Description string `yaml:"description"`
-	LaunchType  string `yaml:"launch_type"`
-	Name        string `yaml:"name"`
+	Command    string `yaml:"command"`
+	Container  string `yaml:"container"`
+	Definition string `yaml:"definition"`
+	LaunchType string `yaml:"launch_type"`
+	TaskName   string `yaml:"task_name"`
 }
 
 // Run performs the task step
@@ -29,8 +28,8 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 		return taskArn, err
 	}
 
-	if t.Name == "" && t.Command == "" {
-		return taskArn, fmt.Errorf("must specify either one of command or name")
+	if t.TaskName == "" && t.Command == "" {
+		return taskArn, fmt.Errorf("must specify either one of command or task_name")
 	}
 
 	if t.Definition == "" {
@@ -57,8 +56,8 @@ func (t TaskStep) Run(c Client, cfg Config) (taskArn string, err error) {
 	}
 
 	taskName := fmt.Sprintf("%s-%s", "flecs", cfg.ProjectName)
-	if t.Name != "" && t.Name != cfg.ProjectName {
-		taskName = fmt.Sprintf("%s-%s", taskName, t.Name)
+	if t.TaskName != "" && t.TaskName != cfg.ProjectName {
+		taskName = fmt.Sprintf("%s-%s", taskName, t.TaskName)
 	} else {
 		name := strings.Split(t.Command, " ")[0]
 		taskName = fmt.Sprintf("%s-%s", taskName, name)
