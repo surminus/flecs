@@ -118,3 +118,15 @@ environments:
 ```
 
 Using `flecs -e production` will mean that Production configuration is used.
+
+### Expressions
+
+You can refer to the `environment`, `tag` or `project_name` as an expression
+in the configuration:
+
+```
+cluster_name: {{ environment }}-cluster
+```
+
+Running `flecs -e production` will mean the cluster name is
+`production-cluster`.
