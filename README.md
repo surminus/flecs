@@ -151,3 +151,24 @@ cluster_name: {{ environment }}-cluster
 
 Running `flecs -e production` will mean the cluster name is
 `production-cluster`.
+
+This means you can use the `{{ tag }}` expression for use with images:
+
+```
+pipeline:
+  - type: service
+    service: web
+
+services:
+  web:
+    definition: web
+
+definitions:
+  web:
+    containers:
+      - name: my_container
+        image: surminus/my_container:{{ tag }}
+```
+
+If `tag` is not specified in configuration or via the `--tag` CLI flag,
+**it will default to the commit SHA of the current working directory**.

@@ -52,8 +52,7 @@ definitions:
     volume_name: errors
     containers:
       - name: rails
-        image: some/image
-        dynamic_tag: true
+        image: some/image:{{ tag }}
     healthcheck:
       command:
     placement_constraints:
