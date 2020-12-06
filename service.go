@@ -14,9 +14,7 @@ import (
 
 // ServiceStep will update a Service
 type ServiceStep struct {
-	Description string `yaml:"description"`
-	Name        string `yaml:"name"`
-	Service     string `yaml:"service"`
+	Service string `yaml:"service"`
 }
 
 // Service contains the parameters for creating a service

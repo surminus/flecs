@@ -39,11 +39,14 @@ type Config struct {
 
 // Step describes a step in the pipeline
 type Step struct {
-	Docker  DockerStep  `yaml:"docker"`
-	Script  ScriptStep  `yaml:"script"`
-	Service ServiceStep `yaml:"service"`
-	Task    TaskStep    `yaml:"task"`
-	Type    string
+	Docker  DockerStep  `yaml:",inline"`
+	Script  ScriptStep  `yaml:",inline"`
+	Service ServiceStep `yaml:",inline"`
+	Task    TaskStep    `yaml:",inline"`
+
+	Description string `yaml:"description"`
+	Name        string `yaml:"name"`
+	Type        string `yaml:"type"`
 }
 
 // LoadConfig will load all configuration options if they exist, allowing
@@ -157,31 +160,30 @@ func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool)
 
 	// Check Pipeline for syntax errors
 	for index, step := range config.Options.Pipeline {
-		serviceSet := step.Service != (ServiceStep{})
-		taskSet := step.Task != (TaskStep{})
-		scriptSet := step.Script != (ScriptStep{})
-		dockerSet := step.Docker != (DockerStep{})
-
-		if !serviceSet && !taskSet && !scriptSet && !dockerSet {
-			return config, fmt.Errorf("invalid step config on step %d", index)
+		if step.Type == "" {
+			return config, fmt.Errorf("must specify step \"type\"")
 		}
 
-		// Here we set as a string what kind of step it is
-		if serviceSet {
-			config.Options.Pipeline[index].Type = "service"
+		validSteps := []string{
+			"docker",
+			"script",
+			"service",
+			"task",
 		}
 
-		if taskSet {
-			config.Options.Pipeline[index].Type = "task"
+		valid := false
+		for _, t := range validSteps {
+			if t == step.Type {
+				valid = true
+				break
+			}
 		}
 
-		if scriptSet {
-			config.Options.Pipeline[index].Type = "script"
+		if valid {
+			continue
 		}
 
-		if dockerSet {
-			config.Options.Pipeline[index].Type = "docker"
-		}
+		return config, fmt.Errorf("invalid step config on step %d", index)
 	}
 
 	return config, err

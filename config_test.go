@@ -27,8 +27,8 @@ func TestLoadConfigBasicError(t *testing.T) {
 func TestLoadConfigBasicPipeline(t *testing.T) {
 	yamlConfig = `---
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "", "", "", false)
@@ -62,8 +62,8 @@ environments:
     cluster_name: test-cluster
 
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "test", "", "", false)
@@ -107,8 +107,8 @@ environments:
     region: eu-west-2
 
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "production", "", "", false)
@@ -120,24 +120,24 @@ pipeline:
 func TestLoadConfigFullPipeline(t *testing.T) {
 	yamlConfig = `---
 pipeline:
-  - script:
-      name: Inline test
-      inline: test
-  - script:
-      name: Path test
-      path: /foo/bar
-  - docker:
-      name: Docker test
-      dockerfile: Dockerfile
-      repository: test/repo
-  - service:
-      name: Service test
-      service: test
-  - task:
-      name: Task test
-      command: uptime
-      container: alpine
-      definition: test
+  - type: script
+    name: Inline test
+    inline: test
+  - type: script
+    name: Path test
+    path: /foo/bar
+  - type: docker
+    name: Docker test
+    dockerfile: Dockerfile
+    repository: test/repo
+  - type: service
+    name: Service test
+    service: test
+  - type: task
+    name: Task test
+    command: uptime
+    container: alpine
+    definition: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "", "", "", false)
@@ -147,41 +147,41 @@ pipeline:
 	options.Pipeline = []Step{
 		Step{
 			Script: ScriptStep{
-				Name:   "Inline test",
 				Inline: "test",
 			},
 			Type: "script",
+			Name: "Inline test",
 		},
 		Step{
 			Script: ScriptStep{
-				Name: "Path test",
 				Path: "/foo/bar",
 			},
 			Type: "script",
+			Name: "Path test",
 		},
 		Step{
 			Docker: DockerStep{
-				Name:       "Docker test",
 				Dockerfile: "Dockerfile",
 				Repository: "test/repo",
 			},
 			Type: "docker",
+			Name: "Docker test",
 		},
 		Step{
 			Service: ServiceStep{
-				Name:    "Service test",
 				Service: "test",
 			},
 			Type: "service",
+			Name: "Service test",
 		},
 		Step{
 			Task: TaskStep{
-				Name:       "Task test",
 				Command:    "uptime",
 				Container:  "alpine",
 				Definition: "test",
 			},
 			Type: "task",
+			Name: "Task test",
 		},
 	}
 
@@ -196,8 +196,16 @@ pipeline:
 func TestLoadConfigPipelineError(t *testing.T) {
 	yamlConfig = `---
 pipeline:
-  - foo:
-      name: Not a real step
+  - type: foo
+    name: Not a real step
+`
+
+	actual, err = LoadConfig(yamlConfig, "", "", "", false)
+	assert.NotNil(t, err)
+
+	yamlConfig = `---
+pipeline:
+  - name: Missing step type
 `
 
 	actual, err = LoadConfig(yamlConfig, "", "", "", false)
@@ -207,8 +215,8 @@ pipeline:
 func TestLoadConfigProjectName(t *testing.T) {
 	yamlConfig = `---
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "", "", "my-project", false)
@@ -220,8 +228,8 @@ pipeline:
 func TestLoadConfigTag(t *testing.T) {
 	yamlConfig = `---
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "", "some-tag", "", false)
@@ -241,8 +249,8 @@ environments:
       red: grapes
 
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "test", "", "", false)
@@ -267,8 +275,8 @@ environments:
       red: grapes
 
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "test", "", "", false)
@@ -287,8 +295,8 @@ func TestLoadConfigExpressions(t *testing.T) {
 cluster_name: {{ environment }}-cluster
 
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "test", "some-tag", "my-project", false)
@@ -300,8 +308,8 @@ pipeline:
 cluster_name: {{ project_name }}-cluster
 
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "test", "some-tag", "my-project", false)
@@ -314,8 +322,8 @@ cluster_name: {{project_name}}-cluster
 log_group_name: {{ environment }}/{{ tag }}
 
 pipeline:
-  - script:
-      inline: test
+  - type: script
+    inline: test
 `
 
 	actual, err = LoadConfig(yamlConfig, "test", "some-tag", "my-project", false)

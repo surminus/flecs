@@ -10,8 +10,8 @@ func (config Config) Deploy() (err error) {
 		switch step.Type {
 		case "task":
 			Log.Infof("[step %d] ==> task", i+1)
-			if step.Task.Name != "" {
-				Log.Info("Name: ", step.Task.Name)
+			if step.Name != "" {
+				Log.Info("Name: ", step.Name)
 			}
 
 			client := Client{Region: config.Options.Region}
@@ -22,8 +22,8 @@ func (config Config) Deploy() (err error) {
 
 		case "service":
 			Log.Infof("[step %d] ==> service", i+1)
-			if step.Service.Name != "" {
-				Log.Info("Name: ", step.Service.Name)
+			if step.Name != "" {
+				Log.Info("Name: ", step.Name)
 			}
 
 			client := Client{Region: config.Options.Region}
@@ -34,8 +34,8 @@ func (config Config) Deploy() (err error) {
 
 		case "script":
 			Log.Infof("[step %d] ==> script", i+1)
-			if step.Script.Name != "" {
-				Log.Info("Name: ", step.Script.Name)
+			if step.Name != "" {
+				Log.Info("Name: ", step.Name)
 			}
 
 			_, err = step.Script.Run()
@@ -45,8 +45,8 @@ func (config Config) Deploy() (err error) {
 
 		case "docker":
 			Log.Infof("[step %d] ==> docker", i+1)
-			if step.Docker.Name != "" {
-				Log.Infof("Name: %s", step.Docker.Name)
+			if step.Name != "" {
+				Log.Infof("Name: %s", step.Name)
 			}
 
 			client := Client{Region: config.Options.Region}
