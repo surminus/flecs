@@ -280,5 +280,47 @@ pipeline:
 	}
 
 	assert.Equal(t, expected, actual.Options.Secrets)
+}
 
+func TestLoadConfigExpressions(t *testing.T) {
+	yamlConfig = `---
+cluster_name: {{ environment }}-cluster
+
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "test", "some-tag", "my-project", false)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "test-cluster", actual.Options.ClusterName)
+
+	yamlConfig = `---
+cluster_name: {{ project_name }}-cluster
+
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "test", "some-tag", "my-project", false)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "my-project-cluster", actual.Options.ClusterName)
+
+	yamlConfig = `---
+cluster_name: {{project_name}}-cluster
+log_group_name: {{ environment }}/{{ tag }}
+
+pipeline:
+  - script:
+      inline: test
+`
+
+	actual, err = LoadConfig(yamlConfig, "test", "some-tag", "my-project", false)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "my-project-cluster", actual.Options.ClusterName)
+	assert.Equal(t, "test/some-tag", actual.Options.LogGroupName)
 }

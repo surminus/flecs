@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 
 	"gopkg.in/yaml.v2"
 )
@@ -48,7 +49,13 @@ type Step struct {
 // LoadConfig will load all configuration options if they exist, allowing
 // environment specific options to override top level options
 func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool) (config Config, err error) {
-	err = yaml.Unmarshal([]byte(yamlConfig), &config)
+	// These are special key words that can be used the configuration to allow
+	// dynamic naming of resources
+	conf := regexp.MustCompile(`{{\s*environment\s*}}`).ReplaceAllString(yamlConfig, environment)
+	conf = regexp.MustCompile(`{{\s*tag\s*}}`).ReplaceAllString(conf, tag)
+	conf = regexp.MustCompile(`{{\s*project_name\s*}}`).ReplaceAllString(conf, projectName)
+
+	err = yaml.Unmarshal([]byte(conf), &config)
 	if err != nil {
 		return config, err
 	}
