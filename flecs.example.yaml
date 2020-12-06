@@ -16,21 +16,21 @@ environments:
       FOO: /path/to/parameter/FOO
 
 pipeline:
-  - docker:
-      name: Build and push image
-  - task:
-      name: show uptime
-      command: uptime
-      definition: some-task
-  - script:
-      name: list files
-      inline: ls
-  - script:
-      name: run foo.sh
-      path: foo.sh
-  - service:
-      name: deploy web service
-      service: web
+  - type: docker
+    name: Build and push image
+  - type: task
+    name: show uptime
+    command: uptime
+    definition: some-task
+  - type: script
+    name: list files
+    inline: ls
+  - type: script
+    name: run foo.sh
+    path: foo.sh
+  - type: service
+    name: deploy web service
+    service: web
 
 services:
   web:
