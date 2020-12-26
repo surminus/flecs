@@ -28,6 +28,7 @@ type Definition struct {
 // Container sets up a container definition
 type Container struct {
 	Command     string       `yaml:"command"`
+	ECRImage    string       `yaml:"ecr_image"`
 	Essential   bool         `yaml:"essential"`
 	HealthCheck HealthCheck  `yaml:"healthcheck"`
 	Image       string       `yaml:"image"`
@@ -239,10 +240,29 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 			})
 		}
 
+		if container.Image != "" && container.ECRImage != "" {
+			return def, fmt.Errorf("cannot specify both image and ecr_image")
+		}
+
+		if container.Image == "" && container.ECRImage == "" {
+			return def, fmt.Errorf("must specify at least either image or ecr_image")
+		}
+
+		image := container.Image
+		if container.ECRImage != "" {
+			gci, err := clients.STS.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+			if err != nil {
+				return def, err
+			}
+
+			registryURI := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", aws.StringValue(gci.Account), cfg.Options.ECRRegion)
+			image = fmt.Sprintf("%s/%s", registryURI, container.ECRImage)
+		}
+
 		containerDefinition := ecs.ContainerDefinition{
 			Environment:      environmentVariables,
 			Essential:        aws.Bool(essential),
-			Image:            aws.String(container.Image),
+			Image:            aws.String(image),
 			LogConfiguration: &logConfiguration,
 			Name:             aws.String(container.Name),
 			Secrets:          secrets,

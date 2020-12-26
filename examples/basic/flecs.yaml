@@ -18,7 +18,7 @@ definitions:
   nginx:
     containers:
      - name: nginx
-       image: {{ repository }}/nginx:{{ tag }}
+       ecr_image: nginx:{{ tag }}
   ubuntu:
     containers:
       - name: ubuntu
