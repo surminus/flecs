@@ -126,7 +126,7 @@ pipeline:
   - type: script
     name: Path test
     path: /foo/bar
-  - type: docker
+  - type: build
     name: Docker test
     dockerfile: Dockerfile
     repository: test/repo
@@ -158,11 +158,11 @@ pipeline:
 			Name: "Path test",
 		},
 		Step{
-			Docker: DockerStep{
+			Build: BuildStep{
 				Dockerfile: "Dockerfile",
 				Repository: "test/repo",
 			},
-			Type: "docker",
+			Type: "build",
 			Name: "Docker test",
 		},
 		Step{

@@ -15,10 +15,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 )
 
-// DockerStep represents the docker step, that builds and pushes Docker
+// BuildStep represents the docker step, that builds and pushes Docker
 // images. For simplicity we're just going to wrap Docker commands so it
 // just needs to be installed.
-type DockerStep struct {
+type BuildStep struct {
 	Dockerfile string     `yaml:"dockerfile"`
 	Repository string     `yaml:"repository"`
 	Args       DockerArgs `yaml:"args"`
@@ -27,14 +27,14 @@ type DockerStep struct {
 // DockerArgs is a defined list of different arguments to pass to Docker
 type DockerArgs struct{}
 
-// Run runs the Docker step stage
-func (d DockerStep) Run(c Client, cfg Config) (err error) {
+// Run runs the Build step stage
+func (b BuildStep) Run(c Client, cfg Config) (err error) {
 	clients, err := c.InitClients()
 	if err != nil {
 		return err
 	}
 
-	repository := d.Repository
+	repository := b.Repository
 	if repository == "" {
 		repository = cfg.ProjectName
 	}
@@ -55,7 +55,7 @@ func (d DockerStep) Run(c Client, cfg Config) (err error) {
 	}
 
 	// Check ECR repository exists and create if it doesn't exist
-	arn, err := d.createRepository(clients, repository)
+	arn, err := b.createRepository(clients, repository)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (d DockerStep) Run(c Client, cfg Config) (err error) {
 
 	// Authenticate with Docker
 	Log.Info("Authenticating...")
-	err = d.loginToECR(clients, registryURI)
+	err = b.loginToECR(clients, registryURI)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func pushImage(imageName string) (err error) {
 	return err
 }
 
-func (d DockerStep) loginToECR(clients Clients, registry string) (err error) {
+func (b BuildStep) loginToECR(clients Clients, registry string) (err error) {
 	result, err := clients.ECR.GetAuthorizationToken(&ecr.GetAuthorizationTokenInput{})
 	if err != nil {
 		return err
@@ -174,8 +174,8 @@ func runDockerCommand(args []string) (err error) {
 	return err
 }
 
-func (d DockerStep) createRepository(clients Clients, name string) (arn string, err error) {
-	arn, err = d.getRepositoryARN(clients, name)
+func (b BuildStep) createRepository(clients Clients, name string) (arn string, err error) {
+	arn, err = b.getRepositoryARN(clients, name)
 	if err != nil {
 		return arn, err
 	}
@@ -201,7 +201,7 @@ func (d DockerStep) createRepository(clients Clients, name string) (arn string, 
 	return arn, err
 }
 
-func (d DockerStep) getRepositoryARN(clients Clients, name string) (arn string, err error) {
+func (b BuildStep) getRepositoryARN(clients Clients, name string) (arn string, err error) {
 	resp, err := clients.ECR.DescribeRepositories(&ecr.DescribeRepositoriesInput{
 		RepositoryNames: aws.StringSlice([]string{name}),
 	})

@@ -43,14 +43,14 @@ func (config Config) Deploy() (err error) {
 				return err
 			}
 
-		case "docker":
-			Log.Infof("[step %d] ==> docker", i+1)
+		case "build":
+			Log.Infof("[step %d] ==> build", i+1)
 			if step.Name != "" {
 				Log.Infof("Name: %s", step.Name)
 			}
 
 			client := Client{Region: config.Options.Region}
-			err = step.Docker.Run(client, config)
+			err = step.Build.Run(client, config)
 			if err != nil {
 				return err
 			}

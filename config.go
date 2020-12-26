@@ -40,7 +40,7 @@ type Config struct {
 
 // Step describes a step in the pipeline
 type Step struct {
-	Docker  DockerStep  `yaml:",inline"`
+	Build   BuildStep   `yaml:",inline"`
 	Script  ScriptStep  `yaml:",inline"`
 	Service ServiceStep `yaml:",inline"`
 	Task    TaskStep    `yaml:",inline"`
@@ -166,7 +166,7 @@ func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool)
 		}
 
 		validSteps := []string{
-			"docker",
+			"build",
 			"script",
 			"service",
 			"task",

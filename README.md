@@ -37,8 +37,8 @@ type has it's own configuration options:
 
 | Name | What |
 |------|------|
+| build | Builds a Docker image and pushes it to an ECR repository |
 | script | Runs a local script |
-| docker | Builds a Docker image and pushes it to an ECR repository |
 | service | Creates and/or updates an ECS service |
 | task | Runs a one-off task in the ECS cluster |
 
@@ -50,7 +50,7 @@ pipeline:
     inline: uptime
   - type: script
     path: path/to/script
-  - type: docker
+  - type: build
     dockerfile: Dockerfile
   - type: service
     service: web
