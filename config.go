@@ -26,6 +26,7 @@ type ConfigOptions struct {
 type Config struct {
 	Options ConfigOptions `yaml:",inline"`
 
+	Builds       map[string]Build         `yaml:"builds"`
 	Definitions  map[string]Definition    `yaml:"definitions"`
 	Environments map[string]ConfigOptions `yaml:"environments"`
 	ProjectName  string                   `yaml:"project_name"`

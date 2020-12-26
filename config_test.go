@@ -127,9 +127,8 @@ pipeline:
     name: Path test
     path: /foo/bar
   - type: build
+    build: test
     name: Docker test
-    dockerfile: Dockerfile
-    repository: test/repo
   - type: service
     name: Service test
     service: test
@@ -159,8 +158,7 @@ pipeline:
 		},
 		Step{
 			Build: BuildStep{
-				Dockerfile: "Dockerfile",
-				Repository: "test/repo",
+				Build: "test",
 			},
 			Type: "build",
 			Name: "Docker test",

@@ -19,6 +19,11 @@ import (
 // images. For simplicity we're just going to wrap Docker commands so it
 // just needs to be installed.
 type BuildStep struct {
+	Build string `yaml:"build"`
+}
+
+// Build specifies details of the image to build
+type Build struct {
 	Dockerfile string     `yaml:"dockerfile"`
 	Repository string     `yaml:"repository"`
 	Args       DockerArgs `yaml:"args"`
@@ -34,7 +39,12 @@ func (b BuildStep) Run(c Client, cfg Config) (err error) {
 		return err
 	}
 
-	repository := b.Repository
+	build, ok := cfg.Builds[b.Build]
+	if !ok {
+		return fmt.Errorf("cannot find build configured called %s", b.Build)
+	}
+
+	repository := build.Repository
 	if repository == "" {
 		repository = cfg.ProjectName
 	}
