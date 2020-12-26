@@ -26,6 +26,7 @@ type BuildStep struct {
 type Build struct {
 	Dockerfile string     `yaml:"dockerfile"`
 	Repository string     `yaml:"repository"`
+	Path       string     `yaml:"path"`
 	Args       DockerArgs `yaml:"args"`
 }
 
@@ -59,7 +60,7 @@ func (b BuildStep) Run(c Client, cfg Config) (err error) {
 	imageNameWithTag := fmt.Sprintf("%s:%s", imageName, cfg.Tag)
 
 	// Build image
-	err = buildImage(imageNameWithTag)
+	err = buildImage(imageNameWithTag, build.Dockerfile, build.Path)
 	if err != nil {
 		return err
 	}
@@ -87,13 +88,22 @@ func (b BuildStep) Run(c Client, cfg Config) (err error) {
 	return err
 }
 
-func buildImage(imageName string) (err error) {
+func buildImage(imageName, dockerfile, path string) (err error) {
 	buildArgs := []string{
 		"build",
 		"--tag",
 		imageName,
-		".",
 	}
+
+	if path == "" {
+		path = "."
+	}
+
+	if dockerfile != "" {
+		buildArgs = append(buildArgs, []string{"--file", dockerfile}...)
+	}
+
+	buildArgs = append(buildArgs, path)
 
 	err = runDockerCommand(buildArgs)
 	return err
