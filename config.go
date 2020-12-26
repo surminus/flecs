@@ -56,9 +56,9 @@ type Step struct {
 func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool) (config Config, err error) {
 	// These are special key words that can be used the configuration to allow
 	// dynamic naming of resources
-	conf := regexp.MustCompile(`{{\s*environment\s*}}`).ReplaceAllString(yamlConfig, environment)
-	conf = regexp.MustCompile(`{{\s*tag\s*}}`).ReplaceAllString(conf, tag)
-	conf = regexp.MustCompile(`{{\s*project_name\s*}}`).ReplaceAllString(conf, projectName)
+	conf := configExpression(yamlConfig, "environment", environment)
+	conf = configExpression(conf, "tag", tag)
+	conf = configExpression(conf, "project_name", projectName)
 
 	err = yaml.Unmarshal([]byte(conf), &config)
 	if err != nil {
@@ -203,4 +203,8 @@ func (c Config) getEnvConfig(environment string) (env ConfigOptions, err error) 
 	}
 
 	return env, err
+}
+
+func configExpression(config, expression, replacement string) string {
+	return regexp.MustCompile(fmt.Sprintf(`{{\s*%s\s*}}`, expression)).ReplaceAllString(config, replacement)
 }
