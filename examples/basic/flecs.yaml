@@ -1,0 +1,40 @@
+region: eu-west-2
+
+pipeline:
+  - type: build
+    build: nginx
+  - type: service
+    service: web
+  - type: task
+    task: uptime
+
+services:
+  web:
+    name: nginx
+    definition: nginx
+    launch_type: FARGATE
+
+definitions:
+  nginx:
+    containers:
+     - name: nginx
+       image: {{ repository }}/nginx:{{ tag }}
+  ubuntu:
+    containers:
+      - name: ubuntu
+        image: ubuntu
+
+builds:
+  nginx:
+    name: Build web service
+    repository: nginx
+
+tasks:
+  uptime:
+    command: uptime
+    definition: ubuntu
+
+load_balancers:
+  frontend:
+    port: 443
+    certificate: flecs.surminus.com
