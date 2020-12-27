@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr/ecriface"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
+	"github.com/aws/aws-sdk-go/service/elbv2"
+	"github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -30,6 +32,7 @@ type Clients struct {
 	ECS            ecsiface.ECSAPI
 	IAM            iamiface.IAMAPI
 	STS            stsiface.STSAPI
+	ELB            elbv2iface.ELBV2API
 }
 
 // InitClients sets up all clients that we use
@@ -44,6 +47,7 @@ func (c Client) InitClients() (clients Clients, err error) {
 		EC2:            ec2.New(session),
 		ECR:            ecr.New(session),
 		ECS:            ecs.New(session),
+		ELB:            elbv2.New(session),
 		IAM:            iam.New(session),
 		STS:            sts.New(session),
 	}
