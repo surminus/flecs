@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ecs"
+	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/dchest/uniuri"
 )
 
@@ -38,16 +39,10 @@ type TargetGroup struct {
 
 // LoadBalancer configures a load balancer, and creates it if it does not
 // already exist.
-//
-// Notes on creating load balancer:
-// 1. Create load balancer, wait for it to provision
-// 2. Create target group
-// 3. Create listener, attached to load balancer, using target group as default rule
-// 4. Create security group to allow access from load balancer to service
-// 5. Create security group to allow access from public to load balancer
 type LoadBalancer struct {
 	CertificateName string      `yaml:"certificate_name"`
 	Port            int64       `yaml:"port"`
+	Protocol        string      `yaml:"protocol"`
 	SSLPolicy       string      `yaml:"ssl_policy"`
 	TargetGroup     TargetGroup `yaml:"target_group"`
 
@@ -130,6 +125,20 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 
 	// Otherwise create the service
 	Log.Infof("Creating service %s", serviceName)
+
+	// If a load balancer is configured, then create the load balancer
+	if service.LoadBalancer != "" {
+		lb, ok := cfg.LoadBalancers[service.LoadBalancer]
+		if !ok {
+			return serviceName, fmt.Errorf("cannot find load balancer configured called %s", service.LoadBalancer)
+		}
+
+		_, err := lb.Create(clients, cfg, "some-name")
+		if err != nil {
+			return serviceName, err
+		}
+	}
+
 	serviceName, err = service.Create(clients, cfg)
 	if err != nil {
 		return serviceName, err
@@ -227,12 +236,12 @@ func (s Service) Create(c Clients, cfg Config) (serviceName string, err error) {
 		TaskDefinition:       aws.String(taskDefinitionArn),
 	}
 
-	if s.LoadBalancer != (LoadBalancer{}) {
+	if s.TargetGroup != (TargetGroup{}) {
 		loadBalancers := []*ecs.LoadBalancer{
 			&ecs.LoadBalancer{
-				ContainerName:  aws.String(s.LoadBalancer.ContainerName),
-				ContainerPort:  aws.Int64(s.LoadBalancer.ContainerPort),
-				TargetGroupArn: aws.String(s.LoadBalancer.TargetGroupArn),
+				ContainerName:  aws.String(s.TargetGroup.ContainerName),
+				ContainerPort:  aws.Int64(s.TargetGroup.ContainerPort),
+				TargetGroupArn: aws.String(s.TargetGroup.TargetGroupArn),
 			},
 		}
 
@@ -356,4 +365,72 @@ func (s Service) serviceNamePrefix(cfg Config) (serviceNamePrefix string) {
 	}
 
 	return serviceNamePrefix
+}
+
+// Create creates a load balancer and all required components
+func (l LoadBalancer) Create(c Clients, cfg Config, name string) (alb LoadBalancer, err error) {
+	// Check load balancer exists
+	describeInput := elbv2.DescribeLoadBalancersInput{
+		Names: aws.StringSlice([]string{name}),
+	}
+
+	lbs, err := c.ELB.DescribeLoadBalancers(&describeInput)
+	if err != nil {
+		return alb, err
+	}
+
+	// If it exists, return early
+	if len(lbs.LoadBalancers) > 0 {
+		lbArn := aws.StringValue(lbs.LoadBalancers[0].LoadBalancerArn)
+
+		return alb, err
+	}
+
+	// Create security group to allow access from load balancer to service
+
+	// Create security group to allow access from public to load balancer
+
+	// Create load balancer
+	input := elbv2.CreateLoadBalancerInput{
+		Name:           aws.String(name),
+		SecurityGroups: []*string{}, // attach previously created sgs
+		Subnets:        []*string{}, // specify subnets
+	}
+
+	lb, err := c.ELB.CreateLoadBalancer(&input)
+	if err != nil {
+		return alb, err
+	}
+
+	// Wait for it to provision
+	err = c.ELB.WaitUntilLoadBalancerAvailable(&describeInput)
+	if err != nil {
+		return alb, err
+	}
+
+	// Create target group
+	targetGroupInput := elbv2.CreateTargetGroupInput{
+		Name:       aws.String(name),
+		TargetType: aws.String("ip"),
+	}
+
+	targetGroup, err := c.ELB.CreateTargetGroup(&targetGroupInput)
+	if err != nil {
+		return alb, err
+	}
+
+	// Create listener, attached to load balancer, using target group as
+	// default rule
+
+	// Find certificate ARN
+
+	listenerInput := elbv2.CreateListenerInput{
+		Certificates: []*elbv2.Certificate{},
+		Port:         aws.Int64(l.Port),
+		Protocol:     aws.String(l.Protocol),
+		SslPolicy:    aws.String(l.SSLPolicy),
+		// DefaultActions needed
+	}
+
+	return alb, err
 }
