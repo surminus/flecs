@@ -19,17 +19,40 @@ type ServiceStep struct {
 
 // Service contains the parameters for creating a service
 type Service struct {
-	Definition   string `yaml:"definition"`
-	LaunchType   string `yaml:"launch_type"`
-	Name         string
-	LoadBalancer LoadBalancer `yaml:"load_balancer"`
+	Definition   string      `yaml:"definition"`
+	LaunchType   string      `yaml:"launch_type"`
+	LoadBalancer string      `yaml:"load_balancer"`
+	TargetGroup  TargetGroup `yaml:"target_group"`
+
+	// Name is automatically assigned
+	Name string
 }
 
-// LoadBalancer configures a load balancer that has been created elsewhere
-type LoadBalancer struct {
-	TargetGroupArn string `yaml:"target_group_arn"`
+// TargetGroup specifies details for a target group. If you wish to use
+// an existing target group, specify it in the main service configuration
+type TargetGroup struct {
 	ContainerName  string `yaml:"container_name"`
 	ContainerPort  int64  `yaml:"container_port"`
+	TargetGroupArn string `yaml:"target_group_arn"`
+}
+
+// LoadBalancer configures a load balancer, and creates it if it does not
+// already exist.
+//
+// Notes on creating load balancer:
+// 1. Create load balancer, wait for it to provision
+// 2. Create target group
+// 3. Create listener, attached to load balancer, using target group as default rule
+// 4. Create security group to allow access from load balancer to service
+// 5. Create security group to allow access from public to load balancer
+type LoadBalancer struct {
+	CertificateName string      `yaml:"certificate_name"`
+	Port            int64       `yaml:"port"`
+	SSLPolicy       string      `yaml:"ssl_policy"`
+	TargetGroup     TargetGroup `yaml:"target_group"`
+
+	// Name is automatically assigned
+	Name string
 }
 
 // Run runs the service step

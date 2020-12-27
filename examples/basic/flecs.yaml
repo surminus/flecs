@@ -12,7 +12,7 @@ services:
   web:
     name: nginx
     definition: nginx
-    launch_type: FARGATE
+    load_balancer: frontend
 
 definitions:
   nginx:
@@ -37,4 +37,6 @@ tasks:
 load_balancers:
   frontend:
     port: 443
-    certificate: flecs.surminus.com
+    certificate_name: flecs.surminus.com
+    target_group:
+      container_name: nginx

@@ -26,12 +26,13 @@ type ConfigOptions struct {
 type Config struct {
 	Options ConfigOptions `yaml:",inline"`
 
-	Builds       map[string]Build         `yaml:"builds"`
-	Definitions  map[string]Definition    `yaml:"definitions"`
-	Environments map[string]ConfigOptions `yaml:"environments"`
-	ProjectName  string                   `yaml:"project_name"`
-	Services     map[string]Service       `yaml:"services"`
-	Tasks        map[string]Task          `yaml:"tasks"`
+	Builds        map[string]Build         `yaml:"builds"`
+	Definitions   map[string]Definition    `yaml:"definitions"`
+	Environments  map[string]ConfigOptions `yaml:"environments"`
+	LoadBalancers map[string]LoadBalancer  `yaml:"load_balancers"`
+	ProjectName   string                   `yaml:"project_name"`
+	Services      map[string]Service       `yaml:"services"`
+	Tasks         map[string]Task          `yaml:"tasks"`
 
 	EnvironmentName string
 	Tag             string
