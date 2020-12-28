@@ -18,8 +18,8 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	cmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to configuration file")
-	cmd.PersistentFlags().StringVarP(&flecsFile, "file", "f", "flecs.yaml", "Path to Flecsfile")
+	cmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to CLI configuration file (otherwise use ~/.flecs_cli.yaml)")
+	cmd.PersistentFlags().StringVarP(&flecsFile, "file", "f", "flecs.yaml", "Path to flecs configuration file")
 
 	cmd.PersistentFlags().StringP("environment", "e", "", "An environment (or stage) to deploy to")
 	CheckError(viper.BindPFlag("environment", cmd.PersistentFlags().Lookup("environment")))
