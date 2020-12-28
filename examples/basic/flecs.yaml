@@ -37,6 +37,7 @@ tasks:
 load_balancers:
   frontend:
     port: 443
-    certificate_name: flecs.surminus.com
+    certificate_arn: # some certificate
     target_group:
       container_name: nginx
+      container_port: 80
