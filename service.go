@@ -359,7 +359,12 @@ func (s Service) checkServicePrefixExists(c Clients, cfg Config, serviceNamePref
 
 func (s Service) serviceNamePrefix(cfg Config) (serviceNamePrefix string) {
 	// Configure service name
-	serviceNamePrefix = strings.Join([]string{"flecs", cfg.ProjectName}, "-")
+	if cfg.ProjectName == "flecs" {
+		serviceNamePrefix = "flecs"
+	} else {
+		serviceNamePrefix = strings.Join([]string{"flecs", cfg.ProjectName}, "-")
+	}
+
 	if cfg.ProjectName != s.Name {
 		serviceNamePrefix = strings.Join([]string{serviceNamePrefix, s.Name}, "-")
 	}
