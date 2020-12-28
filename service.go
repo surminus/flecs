@@ -40,14 +40,17 @@ type TargetGroup struct {
 // LoadBalancer configures a load balancer, and creates it if it does not
 // already exist.
 type LoadBalancer struct {
-	CertificateName string      `yaml:"certificate_name"`
-	Port            int64       `yaml:"port"`
-	Protocol        string      `yaml:"protocol"`
-	SSLPolicy       string      `yaml:"ssl_policy"`
-	TargetGroup     TargetGroup `yaml:"target_group"`
+	CertificateArn string      `yaml:"certificate_arn"`
+	Port           int64       `yaml:"port"`
+	Protocol       string      `yaml:"protocol"`
+	SSLPolicy      string      `yaml:"ssl_policy"`
+	TargetGroup    TargetGroup `yaml:"target_group"`
 
 	// Name is automatically assigned
 	Name string
+
+	// belows values are used internally
+	arn string
 }
 
 // Run runs the service step
@@ -133,7 +136,9 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 			return serviceName, fmt.Errorf("cannot find load balancer configured called %s", service.LoadBalancer)
 		}
 
-		_, err := lb.Create(clients, cfg, "some-name")
+		lb.Name = cfg.ProjectName
+
+		_, err := lb.Create(clients, cfg)
 		if err != nil {
 			return serviceName, err
 		}
@@ -373,10 +378,12 @@ func (s Service) serviceNamePrefix(cfg Config) (serviceNamePrefix string) {
 }
 
 // Create creates a load balancer and all required components
-func (l LoadBalancer) Create(c Clients, cfg Config, name string) (alb LoadBalancer, err error) {
+func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error) {
+	alb = l
+
 	// Check load balancer exists
 	describeInput := elbv2.DescribeLoadBalancersInput{
-		Names: aws.StringSlice([]string{name}),
+		Names: aws.StringSlice([]string{l.Name}),
 	}
 
 	lbs, err := c.ELB.DescribeLoadBalancers(&describeInput)
@@ -384,57 +391,123 @@ func (l LoadBalancer) Create(c Clients, cfg Config, name string) (alb LoadBalanc
 		return alb, err
 	}
 
-	// If it exists, return early
+	// if it already exists then skip creation of load balancer
 	if len(lbs.LoadBalancers) > 0 {
-		lbArn := aws.StringValue(lbs.LoadBalancers[0].LoadBalancerArn)
-
-		return alb, err
+		alb.arn = aws.StringValue(lbs.LoadBalancers[0].LoadBalancerArn)
 	}
 
 	// Create security group to allow access from load balancer to service
 
 	// Create security group to allow access from public to load balancer
 
-	// Create load balancer
-	input := elbv2.CreateLoadBalancerInput{
-		Name:           aws.String(name),
-		SecurityGroups: []*string{}, // attach previously created sgs
-		Subnets:        []*string{}, // specify subnets
+	// Create load balancer if required
+	if alb.arn == "" {
+		network, err := c.NetworkConfiguration(cfg)
+		if err != nil {
+			return alb, err
+		}
+
+		subnets := network.AwsvpcConfiguration.Subnets
+
+		input := elbv2.CreateLoadBalancerInput{
+			Name:           aws.String(l.Name),
+			SecurityGroups: []*string{}, // attach previously created sgs
+			Subnets:        subnets,
+		}
+
+		lb, err := c.ELB.CreateLoadBalancer(&input)
+		if err != nil {
+			return alb, err
+		}
+
+		alb.arn = aws.StringValue(lb.LoadBalancers[0].LoadBalancerArn)
+
+		// Wait for it to provision
+		err = c.ELB.WaitUntilLoadBalancerAvailable(&describeInput)
+		if err != nil {
+			return alb, err
+		}
 	}
 
-	lb, err := c.ELB.CreateLoadBalancer(&input)
+	// Check if the target group exists
+	describeTargetGroupsInput := elbv2.DescribeTargetGroupsInput{
+		Names: aws.StringSlice([]string{l.Name}),
+	}
+
+	describeTargetGroupsOutput, err := c.ELB.DescribeTargetGroups(&describeTargetGroupsInput)
 	if err != nil {
 		return alb, err
 	}
 
-	// Wait for it to provision
-	err = c.ELB.WaitUntilLoadBalancerAvailable(&describeInput)
-	if err != nil {
-		return alb, err
+	if len(describeTargetGroupsOutput.TargetGroups) > 0 {
+		tg := describeTargetGroupsOutput.TargetGroups[0]
+		alb.TargetGroup = TargetGroup{
+			TargetGroupArn: aws.StringValue(tg.TargetGroupArn),
+			ContainerPort:  aws.Int64Value(tg.Port),
+		}
 	}
 
-	// Create target group
-	targetGroupInput := elbv2.CreateTargetGroupInput{
-		Name:       aws.String(name),
-		TargetType: aws.String("ip"),
-	}
+	// Create target group if it does not exist
+	if alb.TargetGroup.TargetGroupArn == "" {
+		targetGroupInput := elbv2.CreateTargetGroupInput{
+			Name:       aws.String(l.Name),
+			TargetType: aws.String("ip"),
+		}
 
-	targetGroup, err := c.ELB.CreateTargetGroup(&targetGroupInput)
-	if err != nil {
-		return alb, err
+		targetGroup, err := c.ELB.CreateTargetGroup(&targetGroupInput)
+		if err != nil {
+			return alb, err
+		}
+
+		tg := targetGroup.TargetGroups[0]
+
+		alb.TargetGroup = TargetGroup{
+			TargetGroupArn: aws.StringValue(tg.TargetGroupArn),
+			ContainerPort:  aws.Int64Value(tg.Port),
+		}
 	}
 
 	// Create listener, attached to load balancer, using target group as
 	// default rule
+	if l.Port == 0 {
+		// Default to HTTPS
+		l.Port = 443
+	}
 
-	// Find certificate ARN
+	if l.Protocol == "" {
+		// Default to HTTPS
+		l.Protocol = "HTTPS"
+	}
+
+	if l.Protocol == "HTTPS" && l.CertificateArn == "" {
+		return alb, fmt.Errorf("must set certificate arn when using HTTPS")
+	}
+
+	defaultActions := []*elbv2.Action{
+		&elbv2.Action{
+			Order:          aws.Int64(10),
+			TargetGroupArn: aws.String(alb.TargetGroup.TargetGroupArn),
+			Type:           aws.String("forward"),
+		},
+	}
 
 	listenerInput := elbv2.CreateListenerInput{
-		Certificates: []*elbv2.Certificate{},
-		Port:         aws.Int64(l.Port),
-		Protocol:     aws.String(l.Protocol),
-		SslPolicy:    aws.String(l.SSLPolicy),
-		// DefaultActions needed
+		DefaultActions: defaultActions,
+		Port:           aws.Int64(l.Port),
+		Protocol:       aws.String(l.Protocol),
+	}
+
+	if l.SSLPolicy != "" {
+		listenerInput.SslPolicy = aws.String(l.SSLPolicy)
+	}
+
+	if l.CertificateArn != "" {
+		listenerInput.Certificates = []*elbv2.Certificate{
+			&elbv2.Certificate{
+				CertificateArn: aws.String(l.CertificateArn),
+				IsDefault:      aws.Bool(true),
+			},
+		}
 	}
 
 	return alb, err

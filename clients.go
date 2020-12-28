@@ -30,9 +30,9 @@ type Clients struct {
 	EC2            ec2iface.EC2API
 	ECR            ecriface.ECRAPI
 	ECS            ecsiface.ECSAPI
+	ELB            elbv2iface.ELBV2API
 	IAM            iamiface.IAMAPI
 	STS            stsiface.STSAPI
-	ELB            elbv2iface.ELBV2API
 }
 
 // InitClients sets up all clients that we use
