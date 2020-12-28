@@ -81,8 +81,12 @@ func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool)
 	}
 
 	// Set default project name
-	if config.ProjectName == "" && projectName == "" {
+	if config.ProjectName == "" && projectName == "" && environment == "" {
 		config.ProjectName = "default"
+	}
+
+	if config.ProjectName == "" && projectName == "" && environment != "" {
+		config.ProjectName = fmt.Sprintf("default-%s", environment)
 	}
 
 	if config.ProjectName == "" && projectName != "" {
@@ -90,8 +94,12 @@ func LoadConfig(yamlConfig, environment, tag, projectName string, recreate bool)
 	}
 
 	// Set ClusterName
-	if config.Options.ClusterName == "" && envConfig.ClusterName == "" {
+	if config.Options.ClusterName == "" && envConfig.ClusterName == "" && environment == "" {
 		config.Options.ClusterName = "flecs"
+	}
+
+	if config.Options.ClusterName == "" && envConfig.ClusterName == "" && environment != "" {
+		config.Options.ClusterName = fmt.Sprintf("flecs-%s", environment)
 	}
 
 	if envConfig.ClusterName != "" {
