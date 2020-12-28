@@ -103,8 +103,7 @@ func (d Definition) Create(c Clients, cfg Config, name string) (arn string, err 
 		return arn, err
 	}
 
-	// Configure container definitions
-	containerDefinitions, err := d.generateContainerDefinitions(cfg, name, cfg.Options.LogGroupName)
+	containerDefinitions, err := d.generateContainerDefinitions(cfg, name, cfg.Options.LogGroupName, accountID)
 	if err != nil {
 		return arn, err
 	}
@@ -163,7 +162,7 @@ func (d Definition) Create(c Clients, cfg Config, name string) (arn string, err 
 	return arn, err
 }
 
-func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, logGroupName string) (def []*ecs.ContainerDefinition, err error) {
+func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, logGroupName, accountID string) (def []*ecs.ContainerDefinition, err error) {
 	// Secrets
 	var secrets []*ecs.Secret
 	for name, valueFrom := range cfg.Options.Secrets {
@@ -250,12 +249,7 @@ func (d Definition) generateContainerDefinitions(cfg Config, logStreamPrefix, lo
 
 		image := container.Image
 		if container.ECRImage != "" {
-			gci, err := clients.STS.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-			if err != nil {
-				return def, err
-			}
-
-			registryURI := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", aws.StringValue(gci.Account), cfg.Options.ECRRegion)
+			registryURI := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", accountID, cfg.Options.ECRRegion)
 			image = fmt.Sprintf("%s/%s", registryURI, container.ECRImage)
 		}
 
