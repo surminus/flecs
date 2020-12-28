@@ -136,7 +136,7 @@ func (s ServiceStep) Run(c Client, cfg Config) (serviceName string, err error) {
 			return serviceName, fmt.Errorf("cannot find load balancer configured called %s", service.LoadBalancer)
 		}
 
-		lb.Name = cfg.ProjectName
+		lb.Name = strings.Join([]string{cfg.ProjectName, service.LoadBalancer}, "-")
 
 		_, err := lb.Create(clients, cfg)
 		if err != nil {
