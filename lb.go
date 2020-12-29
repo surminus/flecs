@@ -14,6 +14,8 @@ type TargetGroup struct {
 	ContainerName  string `yaml:"container_name"`
 	ContainerPort  int64  `yaml:"container_port"`
 	TargetGroupArn string `yaml:"target_group_arn"`
+
+	name string
 }
 
 // Listener is used to create a listener
@@ -38,16 +40,6 @@ type LoadBalancer struct {
 	securityGroupID string
 }
 
-// Create creates a target group
-func (t TargetGroup) Create(c Clients, cfg Config) (tg TargetGroup, err error) {
-	return tg, err
-}
-
-// Create creates a listener
-func (l Listener) Create(c Clients, cfg Config) (listener Listener, err error) {
-	return listener, err
-}
-
 // Create creates a load balancer and all required components
 func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error) {
 	alb = l
@@ -67,72 +59,20 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 		alb.arn = aws.StringValue(lbs.LoadBalancers[0].LoadBalancerArn)
 	}
 
-	// Create security group to allow access from load balancer to service
-	createSecurityGroupInput := ec2.CreateSecurityGroupInput{
-		Description: aws.String("Managed by Flecs"),
-		GroupName:   aws.String(l.Name),
-	}
-
-	securityGroup, err := c.EC2.CreateSecurityGroup(&createSecurityGroupInput)
-	if err != nil {
-		return alb, err
-	}
-
-	alb.securityGroupID = aws.StringValue(securityGroup.GroupId)
-
-	ingressInput := ec2.AuthorizeSecurityGroupIngressInput{
-		GroupId: securityGroup.GroupId,
-		IpPermissions: []*ec2.IpPermission{
-			{
-				FromPort:   aws.Int64(l.Listener.Port),
-				IpProtocol: aws.String("tcp"),
-				IpRanges: []*ec2.IpRange{
-					{
-						CidrIp:      aws.String("0.0.0.0/0"),
-						Description: aws.String("Public access to load balancer"),
-					},
-				},
-				ToPort: aws.Int64(l.Listener.Port),
-			},
-		},
-	}
-
-	_, err = c.EC2.AuthorizeSecurityGroupIngress(&ingressInput)
-	if err != nil {
-		return alb, err
-	}
-
-	egressInput := ec2.AuthorizeSecurityGroupEgressInput{
-		GroupId: securityGroup.GroupId,
-		IpPermissions: []*ec2.IpPermission{
-			{
-				FromPort:   aws.Int64(-1),
-				IpProtocol: aws.String("-1"),
-				IpRanges: []*ec2.IpRange{
-					{
-						CidrIp:      aws.String("0.0.0.0/0"),
-						Description: aws.String("Allow all traffic outbound"),
-					},
-				},
-				ToPort: aws.Int64(-1),
-			},
-		},
-	}
-
-	_, err = c.EC2.AuthorizeSecurityGroupEgress(&egressInput)
-	if err != nil {
-		return alb, err
-	}
-
 	// Create load balancer if required
 	if alb.arn == "" {
+		sgID, err := l.CreateLoadBalancerSecurityGroup(c, cfg)
+		if err != nil {
+			return alb, err
+		}
+
 		network, err := c.NetworkConfiguration(cfg)
 		if err != nil {
 			return alb, err
 		}
 
 		subnets := network.AwsvpcConfiguration.Subnets
-		sgs := []*string{securityGroup.GroupId}
+		sgs := []*string{&sgID}
 
 		input := elbv2.CreateLoadBalancerInput{
 			Name:           aws.String(l.Name),
@@ -154,57 +94,77 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 		}
 	}
 
+	targetGroup, err := l.TargetGroup.Create(c, cfg)
+	if err != nil {
+		return alb, err
+	}
+
+	_, err = l.Listener.Create(c, cfg, alb.arn, targetGroup.TargetGroupArn, 10)
+	if err != nil {
+		return alb, err
+	}
+
+	return alb, err
+}
+
+// Create creates a target group
+func (t TargetGroup) Create(c Clients, cfg Config) (tg TargetGroup, err error) {
+	tg = t
+
 	// Check if the target group exists
 	describeTargetGroupsInput := elbv2.DescribeTargetGroupsInput{
-		Names: aws.StringSlice([]string{l.Name}),
+		Names: aws.StringSlice([]string{t.name}),
 	}
 
 	describeTargetGroupsOutput, err := c.ELB.DescribeTargetGroups(&describeTargetGroupsInput)
 	if err != nil {
-		return alb, err
+		return tg, err
 	}
 
 	if len(describeTargetGroupsOutput.TargetGroups) > 0 {
-		tg := describeTargetGroupsOutput.TargetGroups[0]
-		alb.TargetGroup = TargetGroup{
-			TargetGroupArn: aws.StringValue(tg.TargetGroupArn),
-			ContainerPort:  aws.Int64Value(tg.Port),
-		}
+		targetGroup := describeTargetGroupsOutput.TargetGroups[0]
+		tg.TargetGroupArn = aws.StringValue(targetGroup.TargetGroupArn)
+		tg.ContainerPort = aws.Int64Value(targetGroup.Port)
 	}
 
 	// Create target group if it does not exist
-	if alb.TargetGroup.TargetGroupArn == "" {
+	if tg.TargetGroupArn == "" {
 		targetGroupInput := elbv2.CreateTargetGroupInput{
-			Name:       aws.String(l.Name),
+			Name:       aws.String(t.name),
 			TargetType: aws.String("ip"),
 		}
 
-		targetGroup, err := c.ELB.CreateTargetGroup(&targetGroupInput)
+		createTargetGroupOutput, err := c.ELB.CreateTargetGroup(&targetGroupInput)
 		if err != nil {
-			return alb, err
+			return tg, err
 		}
 
-		tg := targetGroup.TargetGroups[0]
+		targetGroup := createTargetGroupOutput.TargetGroups[0]
 
-		alb.TargetGroup = TargetGroup{
-			TargetGroupArn: aws.StringValue(tg.TargetGroupArn),
-			ContainerPort:  aws.Int64Value(tg.Port),
-		}
+		tg.TargetGroupArn = aws.StringValue(targetGroup.TargetGroupArn)
+		tg.ContainerPort = aws.Int64Value(targetGroup.Port)
 	}
+
+	return tg, err
+}
+
+// Create creates a listener
+func (l Listener) Create(c Clients, cfg Config, lbArn, tgArn string, order int64) (list Listener, err error) {
+	list = l
 
 	// Check that the listener exists
 	describeListenersInput := elbv2.DescribeListenersInput{
-		LoadBalancerArn: aws.String(alb.arn),
+		LoadBalancerArn: aws.String(lbArn),
 	}
 
 	listeners, err := c.ELB.DescribeListeners(&describeListenersInput)
 	if err != nil {
-		return alb, err
+		return list, err
 	}
 
 	var listenerExists bool
 	for _, listener := range listeners.Listeners {
-		if aws.Int64Value(listener.Port) == l.Listener.Port {
+		if aws.Int64Value(listener.Port) == l.Port {
 			listenerExists = true
 		}
 	}
@@ -212,42 +172,42 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 	// Create listener, attached to load balancer, using target group as
 	// default rule
 	if !listenerExists {
-		if l.Listener.Port == 0 {
+		if list.Port == 0 {
 			// Default to HTTP
-			l.Listener.Port = 80
+			list.Port = 80
 		}
 
-		if l.Listener.Protocol == "" {
+		if list.Protocol == "" {
 			// Default to HTTP
-			l.Listener.Protocol = "HTTP"
+			list.Protocol = "HTTP"
 		}
 
-		if l.Listener.Protocol == "HTTPS" && l.Listener.CertificateArn == "" {
-			return alb, fmt.Errorf("must set certificate arn when using HTTPS")
+		if list.Protocol == "HTTPS" && list.CertificateArn == "" {
+			return list, fmt.Errorf("must set certificate arn when using HTTPS")
 		}
 
 		defaultActions := []*elbv2.Action{
 			&elbv2.Action{
-				Order:          aws.Int64(10),
-				TargetGroupArn: aws.String(alb.TargetGroup.TargetGroupArn),
+				Order:          aws.Int64(order),
+				TargetGroupArn: aws.String(tgArn),
 				Type:           aws.String("forward"),
 			},
 		}
 
 		listenerInput := elbv2.CreateListenerInput{
 			DefaultActions: defaultActions,
-			Port:           aws.Int64(l.Listener.Port),
-			Protocol:       aws.String(l.Listener.Protocol),
+			Port:           aws.Int64(list.Port),
+			Protocol:       aws.String(list.Protocol),
 		}
 
-		if l.Listener.SSLPolicy != "" {
-			listenerInput.SslPolicy = aws.String(l.Listener.SSLPolicy)
+		if list.SSLPolicy != "" {
+			listenerInput.SslPolicy = aws.String(list.SSLPolicy)
 		}
 
-		if l.Listener.CertificateArn != "" {
+		if list.CertificateArn != "" {
 			listenerInput.Certificates = []*elbv2.Certificate{
 				&elbv2.Certificate{
-					CertificateArn: aws.String(l.Listener.CertificateArn),
+					CertificateArn: aws.String(list.CertificateArn),
 					IsDefault:      aws.Bool(true),
 				},
 			}
@@ -255,9 +215,72 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 
 		_, err = c.ELB.CreateListener(&listenerInput)
 		if err != nil {
-			return alb, err
+			return list, err
 		}
 	}
 
-	return alb, err
+	return list, err
+}
+
+// CreateLoadBalancerSecurityGroup creates the security group attached
+// to the load balancer
+func (l LoadBalancer) CreateLoadBalancerSecurityGroup(c Clients, cfg Config) (id string, err error) {
+	// Create security group to allow access from load balancer to service
+	createSecurityGroupInput := ec2.CreateSecurityGroupInput{
+		Description: aws.String("Managed by Flecs"),
+		GroupName:   aws.String(l.Name),
+	}
+
+	securityGroup, err := c.EC2.CreateSecurityGroup(&createSecurityGroupInput)
+	if err != nil {
+		return id, err
+	}
+
+	id = aws.StringValue(securityGroup.GroupId)
+
+	ingressInput := ec2.AuthorizeSecurityGroupIngressInput{
+		GroupId: securityGroup.GroupId,
+		IpPermissions: []*ec2.IpPermission{
+			{
+				FromPort:   aws.Int64(l.Listener.Port),
+				IpProtocol: aws.String("tcp"),
+				IpRanges: []*ec2.IpRange{
+					{
+						CidrIp:      aws.String("0.0.0.0/0"),
+						Description: aws.String("Public access to load balancer"),
+					},
+				},
+				ToPort: aws.Int64(l.Listener.Port),
+			},
+		},
+	}
+
+	_, err = c.EC2.AuthorizeSecurityGroupIngress(&ingressInput)
+	if err != nil {
+		return id, err
+	}
+
+	egressInput := ec2.AuthorizeSecurityGroupEgressInput{
+		GroupId: securityGroup.GroupId,
+		IpPermissions: []*ec2.IpPermission{
+			{
+				FromPort:   aws.Int64(-1),
+				IpProtocol: aws.String("-1"),
+				IpRanges: []*ec2.IpRange{
+					{
+						CidrIp:      aws.String("0.0.0.0/0"),
+						Description: aws.String("Allow all traffic outbound"),
+					},
+				},
+				ToPort: aws.Int64(-1),
+			},
+		},
+	}
+
+	_, err = c.EC2.AuthorizeSecurityGroupEgress(&egressInput)
+	if err != nil {
+		return id, err
+	}
+
+	return id, err
 }
