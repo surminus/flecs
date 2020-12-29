@@ -36,8 +36,7 @@ tasks:
 
 load_balancers:
   frontend:
-    port: 443
-    certificate_arn: # some certificate
-    target_group:
-      container_name: nginx
-      container_port: 80
+    # port: 443 # defaults to 80
+    # certificate_arn: # some certificate
+    container_name: nginx
+    container_port: 80

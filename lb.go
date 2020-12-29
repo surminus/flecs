@@ -16,14 +16,19 @@ type TargetGroup struct {
 	TargetGroupArn string `yaml:"target_group_arn"`
 }
 
+// Listener is used to create a listener
+type Listener struct {
+	CertificateArn string `yaml:"certificate_arn"`
+	Port           int64  `yaml:"port"`
+	Protocol       string `yaml:"protocol"`
+	SSLPolicy      string `yaml:"ssl_policy"`
+}
+
 // LoadBalancer configures a load balancer, and creates it if it does not
 // already exist.
 type LoadBalancer struct {
-	CertificateArn string      `yaml:"certificate_arn"`
-	Port           int64       `yaml:"port"`
-	Protocol       string      `yaml:"protocol"`
-	SSLPolicy      string      `yaml:"ssl_policy"`
-	TargetGroup    TargetGroup `yaml:"target_group"`
+	TargetGroup TargetGroup `yaml:",inline"`
+	Listener    Listener    `yaml:",inline"`
 
 	// Name is automatically assigned
 	Name string
@@ -31,6 +36,16 @@ type LoadBalancer struct {
 	// belows values are used internally
 	arn             string
 	securityGroupID string
+}
+
+// Create creates a target group
+func (t TargetGroup) Create(c Clients, cfg Config) (tg TargetGroup, err error) {
+	return tg, err
+}
+
+// Create creates a listener
+func (l Listener) Create(c Clients, cfg Config) (listener Listener, err error) {
+	return listener, err
 }
 
 // Create creates a load balancer and all required components
@@ -69,7 +84,7 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 		GroupId: securityGroup.GroupId,
 		IpPermissions: []*ec2.IpPermission{
 			{
-				FromPort:   aws.Int64(l.Port),
+				FromPort:   aws.Int64(l.Listener.Port),
 				IpProtocol: aws.String("tcp"),
 				IpRanges: []*ec2.IpRange{
 					{
@@ -77,7 +92,7 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 						Description: aws.String("Public access to load balancer"),
 					},
 				},
-				ToPort: aws.Int64(l.Port),
+				ToPort: aws.Int64(l.Listener.Port),
 			},
 		},
 	}
@@ -189,7 +204,7 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 
 	var listenerExists bool
 	for _, listener := range listeners.Listeners {
-		if aws.Int64Value(listener.Port) == l.Port {
+		if aws.Int64Value(listener.Port) == l.Listener.Port {
 			listenerExists = true
 		}
 	}
@@ -197,17 +212,17 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 	// Create listener, attached to load balancer, using target group as
 	// default rule
 	if !listenerExists {
-		if l.Port == 0 {
+		if l.Listener.Port == 0 {
 			// Default to HTTP
-			l.Port = 80
+			l.Listener.Port = 80
 		}
 
-		if l.Protocol == "" {
+		if l.Listener.Protocol == "" {
 			// Default to HTTP
-			l.Protocol = "HTTP"
+			l.Listener.Protocol = "HTTP"
 		}
 
-		if l.Protocol == "HTTPS" && l.CertificateArn == "" {
+		if l.Listener.Protocol == "HTTPS" && l.Listener.CertificateArn == "" {
 			return alb, fmt.Errorf("must set certificate arn when using HTTPS")
 		}
 
@@ -221,18 +236,18 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 
 		listenerInput := elbv2.CreateListenerInput{
 			DefaultActions: defaultActions,
-			Port:           aws.Int64(l.Port),
-			Protocol:       aws.String(l.Protocol),
+			Port:           aws.Int64(l.Listener.Port),
+			Protocol:       aws.String(l.Listener.Protocol),
 		}
 
-		if l.SSLPolicy != "" {
-			listenerInput.SslPolicy = aws.String(l.SSLPolicy)
+		if l.Listener.SSLPolicy != "" {
+			listenerInput.SslPolicy = aws.String(l.Listener.SSLPolicy)
 		}
 
-		if l.CertificateArn != "" {
+		if l.Listener.CertificateArn != "" {
 			listenerInput.Certificates = []*elbv2.Certificate{
 				&elbv2.Certificate{
-					CertificateArn: aws.String(l.CertificateArn),
+					CertificateArn: aws.String(l.Listener.CertificateArn),
 					IsDefault:      aws.Bool(true),
 				},
 			}
