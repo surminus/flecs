@@ -470,13 +470,13 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 	// Create listener, attached to load balancer, using target group as
 	// default rule
 	if l.Port == 0 {
-		// Default to HTTPS
-		l.Port = 443
+		// Default to HTTP
+		l.Port = 80
 	}
 
 	if l.Protocol == "" {
-		// Default to HTTPS
-		l.Protocol = "HTTPS"
+		// Default to HTTP
+		l.Protocol = "HTTP"
 	}
 
 	if l.Protocol == "HTTPS" && l.CertificateArn == "" {
