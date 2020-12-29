@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/dchest/uniuri"
@@ -50,7 +51,8 @@ type LoadBalancer struct {
 	Name string
 
 	// belows values are used internally
-	arn string
+	arn             string
+	securityGroupID string
 }
 
 // Run runs the service step
@@ -397,8 +399,61 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 	}
 
 	// Create security group to allow access from load balancer to service
+	createSecurityGroupInput := ec2.CreateSecurityGroupInput{
+		Description: aws.String("Managed by Flecs"),
+		GroupName:   aws.String(l.Name),
+	}
 
-	// Create security group to allow access from public to load balancer
+	securityGroup, err := c.EC2.CreateSecurityGroup(&createSecurityGroupInput)
+	if err != nil {
+		return alb, err
+	}
+
+	alb.securityGroupID = aws.StringValue(securityGroup.GroupId)
+
+	ingressInput := ec2.AuthorizeSecurityGroupIngressInput{
+		GroupId: securityGroup.GroupId,
+		IpPermissions: []*ec2.IpPermission{
+			{
+				FromPort:   aws.Int64(l.Port),
+				IpProtocol: aws.String("tcp"),
+				IpRanges: []*ec2.IpRange{
+					{
+						CidrIp:      aws.String("0.0.0.0/0"),
+						Description: aws.String("Public access to load balancer"),
+					},
+				},
+				ToPort: aws.Int64(l.Port),
+			},
+		},
+	}
+
+	_, err = c.EC2.AuthorizeSecurityGroupIngress(&ingressInput)
+	if err != nil {
+		return alb, err
+	}
+
+	egressInput := ec2.AuthorizeSecurityGroupEgressInput{
+		GroupId: securityGroup.GroupId,
+		IpPermissions: []*ec2.IpPermission{
+			{
+				FromPort:   aws.Int64(-1),
+				IpProtocol: aws.String("-1"),
+				IpRanges: []*ec2.IpRange{
+					{
+						CidrIp:      aws.String("0.0.0.0/0"),
+						Description: aws.String("Allow all traffic outbound"),
+					},
+				},
+				ToPort: aws.Int64(-1),
+			},
+		},
+	}
+
+	_, err = c.EC2.AuthorizeSecurityGroupEgress(&egressInput)
+	if err != nil {
+		return alb, err
+	}
 
 	// Create load balancer if required
 	if alb.arn == "" {
@@ -408,10 +463,11 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 		}
 
 		subnets := network.AwsvpcConfiguration.Subnets
+		sgs := []*string{securityGroup.GroupId}
 
 		input := elbv2.CreateLoadBalancerInput{
 			Name:           aws.String(l.Name),
-			SecurityGroups: []*string{}, // attach previously created sgs
+			SecurityGroups: sgs,
 			Subnets:        subnets,
 		}
 
@@ -467,46 +523,70 @@ func (l LoadBalancer) Create(c Clients, cfg Config) (alb LoadBalancer, err error
 		}
 	}
 
+	// Check that the listener exists
+	describeListenersInput := elbv2.DescribeListenersInput{
+		LoadBalancerArn: aws.String(alb.arn),
+	}
+
+	listeners, err := c.ELB.DescribeListeners(&describeListenersInput)
+	if err != nil {
+		return alb, err
+	}
+
+	var listenerExists bool
+	for _, listener := range listeners.Listeners {
+		if aws.Int64Value(listener.Port) == l.Port {
+			listenerExists = true
+		}
+	}
+
 	// Create listener, attached to load balancer, using target group as
 	// default rule
-	if l.Port == 0 {
-		// Default to HTTP
-		l.Port = 80
-	}
+	if !listenerExists {
+		if l.Port == 0 {
+			// Default to HTTP
+			l.Port = 80
+		}
 
-	if l.Protocol == "" {
-		// Default to HTTP
-		l.Protocol = "HTTP"
-	}
+		if l.Protocol == "" {
+			// Default to HTTP
+			l.Protocol = "HTTP"
+		}
 
-	if l.Protocol == "HTTPS" && l.CertificateArn == "" {
-		return alb, fmt.Errorf("must set certificate arn when using HTTPS")
-	}
+		if l.Protocol == "HTTPS" && l.CertificateArn == "" {
+			return alb, fmt.Errorf("must set certificate arn when using HTTPS")
+		}
 
-	defaultActions := []*elbv2.Action{
-		&elbv2.Action{
-			Order:          aws.Int64(10),
-			TargetGroupArn: aws.String(alb.TargetGroup.TargetGroupArn),
-			Type:           aws.String("forward"),
-		},
-	}
-
-	listenerInput := elbv2.CreateListenerInput{
-		DefaultActions: defaultActions,
-		Port:           aws.Int64(l.Port),
-		Protocol:       aws.String(l.Protocol),
-	}
-
-	if l.SSLPolicy != "" {
-		listenerInput.SslPolicy = aws.String(l.SSLPolicy)
-	}
-
-	if l.CertificateArn != "" {
-		listenerInput.Certificates = []*elbv2.Certificate{
-			&elbv2.Certificate{
-				CertificateArn: aws.String(l.CertificateArn),
-				IsDefault:      aws.Bool(true),
+		defaultActions := []*elbv2.Action{
+			&elbv2.Action{
+				Order:          aws.Int64(10),
+				TargetGroupArn: aws.String(alb.TargetGroup.TargetGroupArn),
+				Type:           aws.String("forward"),
 			},
+		}
+
+		listenerInput := elbv2.CreateListenerInput{
+			DefaultActions: defaultActions,
+			Port:           aws.Int64(l.Port),
+			Protocol:       aws.String(l.Protocol),
+		}
+
+		if l.SSLPolicy != "" {
+			listenerInput.SslPolicy = aws.String(l.SSLPolicy)
+		}
+
+		if l.CertificateArn != "" {
+			listenerInput.Certificates = []*elbv2.Certificate{
+				&elbv2.Certificate{
+					CertificateArn: aws.String(l.CertificateArn),
+					IsDefault:      aws.Bool(true),
+				},
+			}
+		}
+
+		_, err = c.ELB.CreateListener(&listenerInput)
+		if err != nil {
+			return alb, err
 		}
 	}
 
